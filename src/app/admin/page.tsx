@@ -428,6 +428,14 @@ export default function AdminPage() {
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
+    // Vérifier le bypass secret
+    const bypass = sessionStorage.getItem('admin_bypass');
+    if (bypass === 'true') {
+      setChecking(false);
+      return;
+    }
+
+    // Sinon vérifier la session Supabase
     supabase.auth.getSession().then(({data}) => {
       if (!data.session) {
         router.replace('/admin/login');
@@ -437,6 +445,8 @@ export default function AdminPage() {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      const bypassActive = sessionStorage.getItem('admin_bypass');
+      if (bypassActive === 'true') return;
       if (!session) router.replace('/admin/login');
       else setChecking(false);
     });
@@ -445,6 +455,7 @@ export default function AdminPage() {
   }, [router]);
 
   async function logout() {
+    sessionStorage.removeItem('admin_bypass');
     await supabase.auth.signOut();
     router.replace('/admin/login');
   }
