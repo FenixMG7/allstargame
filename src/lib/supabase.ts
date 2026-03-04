@@ -1,11 +1,18 @@
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: {
+    persistSession: true,
+    storageKey: 'allstargame-auth',
+    storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+  }
+});
 
-// Types
 export interface Player {
   id: string;
   first_name: string;
@@ -33,7 +40,7 @@ export interface Vote {
   player_3_id: string;
   player_4_id: string;
   player_5_id: string;
-  bonus_player_id: string;  // One of the 5 selected players who gets the bonus
+  bonus_player_id: string;
   submitted_at: string;
 }
 
