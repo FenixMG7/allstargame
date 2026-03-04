@@ -167,4 +167,102 @@ export default function VotePage() {
                 {step === 'select' ? 'CHOISISSEZ VOS 5 JOUEURS' : 'ATTRIBUEZ LE BONUS'}
               </h1>
               <p className="text-white/40 text-xs mt-0.5">
-                {step === 'select' ? 'Sélectionnez exactement 5 joueurs
+                {step === 'select' ? 'Sélectionnez exactement 5 joueurs' : 'Lequel de vos 5 reçoit le bonus ?'}
+              </p>
+            </div>
+            {step === 'select' && (
+              <div className="flex flex-col items-end gap-0.5">
+                <span style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-4xl text-[#E8651A] leading-none">
+                  {selectedIds.length}<span className="text-white/30 text-2xl">/{MAX_PLAYERS}</span>
+                </span>
+              </div>
+            )}
+            {step === 'bonus' && (
+              <button onClick={() => { setStep('select'); setBonusId(null); }} className="text-sm text-white/50 hover:text-[#E8651A] transition-colors">
+                ← Modifier
+              </button>
+            )}
+          </div>
+          {step === 'select' && (
+            <div className="flex gap-1.5">
+              {Array.from({length: MAX_PLAYERS}).map((_, i) => (
+                <div key={i} className="h-2 flex-1 rounded-full transition-all duration-500"
+                  style={{background: i < selectedIds.length ? '#E8651A' : '#1E1E1E',
+                  boxShadow: i < selectedIds.length ? '0 0 8px rgba(232,101,26,0.6)' : 'none'}} />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {step === 'select' && (
+        <div className="max-w-5xl mx-auto px-4 py-8">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 sm:gap-4">
+            {players.map(player => (
+              <PlayerCard key={player.id} player={player}
+                selected={selectedIds.includes(player.id)} isBonus={false}
+                canSelect={selectedIds.length < MAX_PLAYERS || selectedIds.includes(player.id)}
+                onClick={() => togglePlayer(player.id)} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {step === 'bonus' && (
+        <div className="max-w-5xl mx-auto px-4 py-8">
+          <div className="mb-8 p-5 rounded-2xl border flex gap-4 items-start" style={{borderColor:'rgba(255,215,0,0.3)',background:'rgba(255,215,0,0.03)'}}>
+            <span className="text-3xl">⭐</span>
+            <div>
+              <h3 style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-xl text-[#FFD700]">Superstar Bonus</h3>
+              <p className="text-white/60 text-sm mt-1">Parmi vos 5 joueurs, lequel mérite le bonus ? Il recevra des points supplémentaires.</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
+            {selectedPlayers.map(player => (
+              <PlayerCard key={player.id} player={player} selected={true}
+                isBonus={bonusId === player.id} canSelect={true}
+                onClick={() => setBonusId(prev => prev === player.id ? null : player.id)} />
+            ))}
+          </div>
+          {bonusId && (
+            <div className="mt-6 p-4 rounded-xl border text-center animate-fade-in" style={{borderColor:'rgba(255,215,0,0.3)',background:'rgba(255,215,0,0.05)'}}>
+              <p className="text-[#FFD700] text-sm">⭐ <strong>{bonusPlayer?.first_name} {bonusPlayer?.last_name}</strong> recevra le Superstar Bonus</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="fixed bottom-0 inset-x-0 z-40 p-4 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A]/95 to-transparent">
+        <div className="max-w-lg mx-auto">
+          {step === 'select' ? (
+            <button onClick={() => { setBonusId(null); setStep('bonus'); window.scrollTo({top:0,behavior:'smooth'}); }}
+              disabled={selectedIds.length < MAX_PLAYERS}
+              className="btn-shimmer w-full py-4 rounded-xl transition-all duration-300 flex items-center justify-center gap-3"
+              style={{fontFamily:'Bebas Neue,sans-serif', fontSize:'1.5rem', letterSpacing:'0.05em',
+                background: selectedIds.length === MAX_PLAYERS ? '#E8651A' : '#1E1E1E',
+                color: selectedIds.length === MAX_PLAYERS ? 'white' : 'rgba(255,255,255,0.3)',
+                boxShadow: selectedIds.length === MAX_PLAYERS ? '0 0 0 2px #E8651A, 0 0 30px rgba(232,101,26,0.5)' : 'none',
+                cursor: selectedIds.length < MAX_PLAYERS ? 'not-allowed' : 'pointer'}}>
+              {selectedIds.length === MAX_PLAYERS ? <>CHOISIR LE BONUS →</> : `Sélectionnez encore ${MAX_PLAYERS - selectedIds.length} joueur${MAX_PLAYERS - selectedIds.length > 1 ? 's' : ''}`}
+            </button>
+          ) : (
+            <button onClick={() => setShowConfirm(true)} disabled={!bonusId}
+              className="btn-shimmer w-full py-4 rounded-xl transition-all duration-300 flex items-center justify-center gap-3"
+              style={{fontFamily:'Bebas Neue,sans-serif', fontSize:'1.5rem', letterSpacing:'0.05em',
+                background: bonusId ? '#E8651A' : '#1E1E1E',
+                color: bonusId ? 'white' : 'rgba(255,255,255,0.3)',
+                boxShadow: bonusId ? '0 0 0 2px #E8651A, 0 0 30px rgba(232,101,26,0.5)' : 'none',
+                cursor: !bonusId ? 'not-allowed' : 'pointer'}}>
+              {bonusId ? <>⭐ VALIDER MON VOTE</> : 'Attribuez le bonus pour continuer'}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {showConfirm && bonusPlayer && (
+        <ConfirmModal players={selectedPlayers} bonusPlayer={bonusPlayer}
+          onConfirm={submitVote} onCancel={() => setShowConfirm(false)} loading={submitting} />
+      )}
+    </main>
+  );
+}
