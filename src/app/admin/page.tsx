@@ -104,8 +104,8 @@ function ResultsTab() {
         {scores.map((s, i) => (
           <div key={s.player.id} className="flex items-center gap-4 p-4 rounded-xl border transition-all"
             style={{borderColor: i === 0 ? 'rgba(232,101,26,0.5)' : '#1E1E1E', background: i === 0 ? 'rgba(232,101,26,0.05)' : '#141414'}}>
-            <div style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-3xl w-8 text-center flex-shrink-0"
-              style={{color: i === 0 ? '#E8651A' : i === 1 ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.2)'}}>
+            <div className="text-3xl w-8 text-center flex-shrink-0"
+  style={{fontFamily:'Bebas Neue,sans-serif', color: i === 0 ? '#E8651A' : i === 1 ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.2)'}}>
               {i + 1}
             </div>
             <div className="flex-1 min-w-0">
