@@ -105,7 +105,7 @@ function ResultsTab() {
           <div key={s.player.id} className="flex items-center gap-4 p-4 rounded-xl border transition-all"
             style={{borderColor: i === 0 ? 'rgba(232,101,26,0.5)' : '#1E1E1E', background: i === 0 ? 'rgba(232,101,26,0.05)' : '#141414'}}>
             <div className="text-3xl w-8 text-center flex-shrink-0"
-  style={{fontFamily:'Bebas Neue,sans-serif', color: i === 0 ? '#E8651A' : i === 1 ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.2)'}}>
+              style={{fontFamily:'Bebas Neue,sans-serif', color: i === 0 ? '#E8651A' : i === 1 ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.2)'}}>
               {i + 1}
             </div>
             <div className="flex-1 min-w-0">
@@ -117,11 +117,13 @@ function ResultsTab() {
                 </div>
               </div>
               <div className="h-2 bg-[#1E1E1E] rounded-full overflow-hidden">
-                <div className="h-full rounded-full transition-all duration-700" style={{width:`${(s.votes/maxVotes)*100}%`, background:'#E8651A'}} />
+                <div className="h-full rounded-full transition-all duration-700"
+                  style={{width:`${(s.votes/maxVotes)*100}%`, background:'#E8651A'}} />
               </div>
               {s.bonuses > 0 && (
                 <div className="h-1 bg-[#1E1E1E] rounded-full overflow-hidden mt-0.5">
-                  <div className="h-full rounded-full transition-all duration-700" style={{width:`${(s.bonuses/maxVotes)*100}%`, background:'#FFD700'}} />
+                  <div className="h-full rounded-full transition-all duration-700"
+                    style={{width:`${(s.bonuses/maxVotes)*100}%`, background:'#FFD700'}} />
                 </div>
               )}
             </div>
@@ -171,7 +173,11 @@ function CodesTab() {
   return (
     <div className="flex flex-col gap-6">
       <div className="grid grid-cols-3 gap-4">
-        {[{label:'Valides',value:valid,color:'#4ade80'},{label:'Utilisés',value:used,color:'#E8651A'},{label:'Total',value:codes.length,color:'white'}].map(s => (
+        {[
+          {label:'Valides',value:valid,color:'#4ade80'},
+          {label:'Utilisés',value:used,color:'#E8651A'},
+          {label:'Total',value:codes.length,color:'white'}
+        ].map(s => (
           <div key={s.label} className="bg-[#141414] border border-[#1E1E1E] rounded-xl p-4 text-center">
             <div style={{fontFamily:'Bebas Neue,sans-serif',color:s.color}} className="text-3xl">{s.value}</div>
             <div className="text-white/40 text-xs mt-1">{s.label}</div>
@@ -184,7 +190,8 @@ function CodesTab() {
         <div className="flex gap-3 items-end">
           <div className="flex flex-col gap-1 flex-1">
             <label className="text-white/40 text-xs">Quantité</label>
-            <input type="number" min={1} max={1000} value={quantity} onChange={e => setQuantity(Number(e.target.value))}
+            <input type="number" min={1} max={1000} value={quantity}
+              onChange={e => setQuantity(Number(e.target.value))}
               className="bg-[#0A0A0A] border border-[#1E1E1E] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-[#E8651A]" />
           </div>
           <button onClick={generateCodes} disabled={generating}
@@ -197,7 +204,8 @@ function CodesTab() {
           <div className="flex flex-col gap-2 animate-fade-in">
             <div className="flex items-center justify-between">
               <p className="text-green-400 text-sm">✅ {generated.length} codes générés</p>
-              <button onClick={() => exportCSV(generated, `nouveaux-codes-${Date.now()}.csv`)} className="text-xs text-[#E8651A] hover:underline">📥 Télécharger CSV</button>
+              <button onClick={() => exportCSV(generated, `nouveaux-codes-${Date.now()}.csv`)}
+                className="text-xs text-[#E8651A] hover:underline">📥 Télécharger CSV</button>
             </div>
             <div className="max-h-32 overflow-y-auto bg-[#0A0A0A] rounded-lg p-3 font-mono text-xs text-white/60 grid grid-cols-2 gap-1">
               {generated.slice(0,20).map(c => <span key={c}>{c}</span>)}
@@ -219,11 +227,15 @@ function CodesTab() {
             {codes.slice(0,50).map(c => (
               <tr key={c.code}>
                 <td className="font-mono text-white/80 text-sm">{c.code}</td>
-                <td><span className="inline-block px-2 py-0.5 rounded-full text-xs font-bold uppercase"
-                  style={{background: c.status==='valid' ? 'rgba(74,222,128,0.2)' : 'rgba(232,101,26,0.2)',
-                  color: c.status==='valid' ? '#4ade80' : '#E8651A'}}>
-                  {c.status==='valid' ? 'Valide' : 'Utilisé'}
-                </span></td>
+                <td>
+                  <span className="inline-block px-2 py-0.5 rounded-full text-xs font-bold uppercase"
+                    style={{
+                      background: c.status==='valid' ? 'rgba(74,222,128,0.2)' : 'rgba(232,101,26,0.2)',
+                      color: c.status==='valid' ? '#4ade80' : '#E8651A'
+                    }}>
+                    {c.status==='valid' ? 'Valide' : 'Utilisé'}
+                  </span>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -246,10 +258,12 @@ function PlayersTab() {
   }
 
   async function addPlayer(e: React.FormEvent) {
-    e.preventDefault(); setSaving(true);
+    e.preventDefault();
+    setSaving(true);
     await supabase.from('players').insert({...form, number: Number(form.number), is_active: true});
     setForm({first_name:'',last_name:'',number:'',position:'PG'});
-    fetchPlayers(); setSaving(false);
+    fetchPlayers();
+    setSaving(false);
   }
 
   async function toggleActive(id: string, current: boolean) {
@@ -268,13 +282,19 @@ function PlayersTab() {
       <div className="bg-[#141414] border border-[#1E1E1E] rounded-xl p-5">
         <h3 className="font-semibold text-white text-sm uppercase tracking-wider mb-4">Ajouter un joueur</h3>
         <form onSubmit={addPlayer} className="grid grid-cols-2 gap-3">
-          {[{key:'first_name',placeholder:'Prénom'},{key:'last_name',placeholder:'Nom'},{key:'number',placeholder:'Numéro',type:'number'}].map(f => (
+          {[
+            {key:'first_name',placeholder:'Prénom'},
+            {key:'last_name',placeholder:'Nom'},
+            {key:'number',placeholder:'Numéro',type:'number'}
+          ].map(f => (
             <input key={f.key} type={f.type||'text'} placeholder={f.placeholder}
               value={form[f.key as keyof typeof form]}
               onChange={e => setForm(prev => ({...prev,[f.key]:e.target.value}))}
-              required className="bg-[#0A0A0A] border border-[#1E1E1E] rounded-lg px-3 py-2 text-white placeholder:text-white/20 focus:outline-none focus:border-[#E8651A]" />
+              required
+              className="bg-[#0A0A0A] border border-[#1E1E1E] rounded-lg px-3 py-2 text-white placeholder:text-white/20 focus:outline-none focus:border-[#E8651A]" />
           ))}
-          <select value={form.position} onChange={e => setForm(prev => ({...prev,position:e.target.value}))}
+          <select value={form.position}
+            onChange={e => setForm(prev => ({...prev,position:e.target.value}))}
             className="bg-[#0A0A0A] border border-[#1E1E1E] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-[#E8651A]">
             {['PG','SG','SF','PF','C'].map(p => <option key={p} value={p}>{p}</option>)}
           </select>
@@ -288,7 +308,15 @@ function PlayersTab() {
 
       <div className="bg-[#141414] border border-[#1E1E1E] rounded-xl overflow-hidden">
         <table className="w-full admin-table">
-          <thead><tr><th className="text-left">#</th><th className="text-left">Joueur</th><th className="text-left">Poste</th><th className="text-left">Actif</th><th className="text-left">Action</th></tr></thead>
+          <thead>
+            <tr>
+              <th className="text-left">#</th>
+              <th className="text-left">Joueur</th>
+              <th className="text-left">Poste</th>
+              <th className="text-left">Actif</th>
+              <th className="text-left">Action</th>
+            </tr>
+          </thead>
           <tbody>
             {players.map(p => (
               <tr key={p.id}>
@@ -304,7 +332,8 @@ function PlayersTab() {
                   </button>
                 </td>
                 <td>
-                  <button onClick={() => deletePlayer(p.id)} className="text-red-400/50 hover:text-red-400 text-sm transition-colors">🗑</button>
+                  <button onClick={() => deletePlayer(p.id)}
+                    className="text-red-400/50 hover:text-red-400 text-sm transition-colors">🗑</button>
                 </td>
               </tr>
             ))}
@@ -322,14 +351,16 @@ function SettingsTab() {
 
   useEffect(() => {
     supabase.from('vote_settings').select('*').single().then(({data}) => {
-      if (data) setSettings(data); setLoading(false);
+      if (data) setSettings(data);
+      setLoading(false);
     });
   }, []);
 
   async function save() {
     setSaving(true);
     await supabase.from('vote_settings').update(settings).eq('id',1);
-    setSaving(false); alert('Paramètres sauvegardés !');
+    setSaving(false);
+    alert('Paramètres sauvegardés !');
   }
 
   async function resetVotes() {
@@ -348,12 +379,14 @@ function SettingsTab() {
         <h3 className="font-semibold text-white text-sm uppercase tracking-wider">Paramètres</h3>
         <div className="flex flex-col gap-2">
           <label className="text-white/50 text-xs uppercase tracking-wider">Nom de l&apos;événement</label>
-          <input value={settings.event_name} onChange={e => setSettings(s=>({...s,event_name:e.target.value}))}
+          <input value={settings.event_name}
+            onChange={e => setSettings(s=>({...s,event_name:e.target.value}))}
             className="bg-[#0A0A0A] border border-[#1E1E1E] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-[#E8651A]" />
         </div>
         <div className="flex flex-col gap-2">
           <label className="text-white/50 text-xs uppercase tracking-wider">Date de l&apos;événement</label>
-          <input type="datetime-local" value={settings.event_date?.slice(0,16)} onChange={e => setSettings(s=>({...s,event_date:e.target.value}))}
+          <input type="datetime-local" value={settings.event_date?.slice(0,16)}
+            onChange={e => setSettings(s=>({...s,event_date:e.target.value}))}
             className="bg-[#0A0A0A] border border-[#1E1E1E] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-[#E8651A]" />
         </div>
         <div className="flex items-center justify-between p-3 rounded-lg bg-[#0A0A0A] border border-[#1E1E1E]">
@@ -375,10 +408,12 @@ function SettingsTab() {
         </button>
       </div>
 
-      <div className="rounded-xl p-5 flex flex-col gap-3" style={{background:'rgba(153,27,27,0.2)',border:'1px solid rgba(153,27,27,0.5)'}}>
+      <div className="rounded-xl p-5 flex flex-col gap-3"
+        style={{background:'rgba(153,27,27,0.2)',border:'1px solid rgba(153,27,27,0.5)'}}>
         <h3 className="font-semibold text-red-400 text-sm uppercase tracking-wider">⚠️ Zone dangereuse</h3>
         <p className="text-white/40 text-xs">Supprime tous les votes de manière irréversible.</p>
-        <button onClick={resetVotes} className="font-semibold py-2 rounded-lg transition-all text-sm text-white"
+        <button onClick={resetVotes}
+          className="font-semibold py-2 rounded-lg transition-all text-sm text-white"
           style={{background:'#b91c1c'}}>
           🗑 Réinitialiser tous les votes
         </button>
@@ -394,9 +429,19 @@ export default function AdminPage() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({data}) => {
-      if (!data.session) router.replace('/admin/login');
+      if (!data.session) {
+        router.replace('/admin/login');
+      } else {
+        setChecking(false);
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!session) router.replace('/admin/login');
       else setChecking(false);
     });
+
+    return () => subscription.unsubscribe();
   }, [router]);
 
   async function logout() {
