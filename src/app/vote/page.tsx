@@ -6,6 +6,53 @@ import { supabase, Player } from '@/lib/supabase';
 
 const MAX_PLAYERS = 5;
 
+// ─── Pop-up règles ────────────────────────────────────────────
+function RulesModal({ onAccept }: { onAccept: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm animate-fade-in">
+      <div className="w-full max-w-md bg-[#141414] border border-[#E8651A]/50 rounded-2xl overflow-hidden animate-bounce-in">
+        {/* Header */}
+        <div className="bg-[#E8651A] px-6 py-4 flex items-center gap-3">
+          <img src="/logo.png" alt="CSL" className="w-10 h-10 object-contain" />
+          <div>
+            <h2 style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-2xl text-white leading-none">RÈGLES DU VOTE</h2>
+            <p className="text-white/80 text-xs">CSL Basket St Vallier — All-Star Game</p>
+          </div>
+        </div>
+
+        {/* Rules */}
+        <div className="px-6 py-5 flex flex-col gap-4">
+          {[
+            { icon: '1️⃣', title: '5 joueurs titulaires', desc: 'Sélectionnez exactement 5 joueurs que vous voulez voir au All-Star Game.' },
+            { icon: '⭐', title: 'Le Superstar Bonus', desc: 'Parmi vos 5 joueurs, attribuez le bonus à celui qui mérite le plus d\'être mis en avant.' },
+            { icon: '🔒', title: 'Vote unique', desc: 'Votre code ne peut être utilisé qu\'une seule fois. Le vote est définitif.' },
+            { icon: '🏆', title: 'Résultats', desc: 'Les 5 joueurs les plus votés seront sélectionnés pour le All-Star Game !' },
+          ].map(r => (
+            <div key={r.title} className="flex gap-3 items-start">
+              <span className="text-2xl flex-shrink-0">{r.icon}</span>
+              <div>
+                <p className="font-semibold text-white text-sm">{r.title}</p>
+                <p className="text-white/50 text-xs mt-0.5">{r.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* CTA */}
+        <div className="px-6 pb-6">
+          <button
+            onClick={onAccept}
+            className="btn-shimmer w-full py-4 rounded-xl text-white transition-all hover:scale-[1.02]"
+            style={{fontFamily:'Bebas Neue,sans-serif', fontSize:'1.5rem', letterSpacing:'0.05em', background:'#E8651A', boxShadow:'0 0 20px rgba(232,101,26,0.4)'}}>
+            J&apos;AI COMPRIS — VOTER !
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Player Card ──────────────────────────────────────────────
 function PlayerCard({ player, selected, isBonus, canSelect, onClick }: {
   player: Player; selected: boolean; isBonus: boolean; canSelect: boolean; onClick: () => void;
 }) {
@@ -57,6 +104,7 @@ function PlayerCard({ player, selected, isBonus, canSelect, onClick }: {
   );
 }
 
+// ─── Confirmation modal ───────────────────────────────────────
 function ConfirmModal({ players, bonusPlayer, onConfirm, onCancel, loading }: {
   players: Player[]; bonusPlayer: Player; onConfirm: () => void; onCancel: () => void; loading: boolean;
 }) {
@@ -70,15 +118,21 @@ function ConfirmModal({ players, bonusPlayer, onConfirm, onCancel, loading }: {
         <div className="flex flex-col gap-2">
           <p className="text-white/60 text-xs uppercase tracking-widest mb-1">Vos 5 titulaires</p>
           {players.map((p, i) => (
-            <div key={p.id} className="flex items-center gap-3 p-2.5 rounded-xl border transition-all"
+            <div key={p.id} className="flex items-center gap-3 p-2.5 rounded-xl border"
               style={{borderColor: p.id === bonusPlayer.id ? '#FFD700' : '#1E1E1E', background: p.id === bonusPlayer.id ? 'rgba(255,215,0,0.05)' : '#0A0A0A'}}>
               <span style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-lg text-[#E8651A] w-5 text-center">{i + 1}</span>
+              <div className="w-8 h-8 rounded-full overflow-hidden bg-[#1E1E1E] flex-shrink-0">
+                {p.photo_url
+                  ? <img src={p.photo_url} alt={p.last_name} className="w-full h-full object-cover" />
+                  : <div className="w-full h-full flex items-center justify-center"><span style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-xs text-[#E8651A]">{p.first_name[0]}</span></div>
+                }
+              </div>
               <div className="flex-1">
                 <span className="font-semibold text-white text-sm">{p.first_name} {p.last_name}</span>
                 <span className="text-white/40 text-xs ml-2">#{p.number}</span>
               </div>
               {p.id === bonusPlayer.id && (
-                <span className="text-[10px] font-bold text-black px-2 py-0.5 rounded-full uppercase tracking-wider" style={{background:'#FFD700'}}>⭐ Bonus</span>
+                <span className="text-[10px] font-bold text-black px-2 py-0.5 rounded-full uppercase" style={{background:'#FFD700'}}>⭐ Bonus</span>
               )}
             </div>
           ))}
@@ -89,7 +143,7 @@ function ConfirmModal({ players, bonusPlayer, onConfirm, onCancel, loading }: {
           </button>
           <button onClick={onConfirm} disabled={loading}
             className="btn-shimmer flex-1 py-3 rounded-xl text-white transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-            style={{fontFamily:'Bebas Neue,sans-serif', fontSize:'1.25rem', letterSpacing:'0.05em', background:'#E8651A'}}>
+            style={{fontFamily:'Bebas Neue,sans-serif', fontSize:'1.25rem', background:'#E8651A'}}>
             {loading ? <><div className="spinner" /> Envoi...</> : 'VALIDER'}
           </button>
         </div>
@@ -98,6 +152,7 @@ function ConfirmModal({ players, bonusPlayer, onConfirm, onCancel, loading }: {
   );
 }
 
+// ─── Main Vote Page ───────────────────────────────────────────
 export default function VotePage() {
   const router = useRouter();
   const [players, setPlayers] = useState<Player[]>([]);
@@ -105,6 +160,7 @@ export default function VotePage() {
   const [bonusId, setBonusId] = useState<string | null>(null);
   const [step, setStep] = useState<'select' | 'bonus'>('select');
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showRules, setShowRules] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [loadingPlayers, setLoadingPlayers] = useState(true);
 
@@ -159,16 +215,24 @@ export default function VotePage() {
 
   return (
     <main className="min-h-screen pb-32">
+
+      {/* Pop-up règles */}
+      {showRules && <RulesModal onAccept={() => setShowRules(false)} />}
+
+      {/* Header */}
       <div className="sticky top-0 z-40 bg-[#0A0A0A]/90 backdrop-blur-md border-b border-[#1E1E1E]">
         <div className="max-w-5xl mx-auto px-4 py-4 flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-2xl sm:text-3xl text-white leading-none">
-                {step === 'select' ? 'CHOISISSEZ VOS 5 JOUEURS' : 'ATTRIBUEZ LE BONUS'}
-              </h1>
-              <p className="text-white/40 text-xs mt-0.5">
-                {step === 'select' ? 'Sélectionnez exactement 5 joueurs' : 'Lequel de vos 5 reçoit le bonus ?'}
-              </p>
+            <div className="flex items-center gap-3">
+              <img src="/logo.png" alt="CSL" className="w-8 h-8 object-contain" />
+              <div>
+                <h1 style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-2xl sm:text-3xl text-white leading-none">
+                  {step === 'select' ? 'CHOISISSEZ VOS 5 JOUEURS' : 'ATTRIBUEZ LE BONUS'}
+                </h1>
+                <p className="text-white/40 text-xs mt-0.5">
+                  {step === 'select' ? 'Sélectionnez exactement 5 joueurs' : 'Lequel de vos 5 reçoit le bonus ?'}
+                </p>
+              </div>
             </div>
             {step === 'select' && (
               <div className="flex flex-col items-end gap-0.5">
@@ -195,6 +259,7 @@ export default function VotePage() {
         </div>
       </div>
 
+      {/* Step 1 — Sélection */}
       {step === 'select' && (
         <div className="max-w-5xl mx-auto px-4 py-8">
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 sm:gap-4">
@@ -208,6 +273,7 @@ export default function VotePage() {
         </div>
       )}
 
+      {/* Step 2 — Bonus */}
       {step === 'bonus' && (
         <div className="max-w-5xl mx-auto px-4 py-8">
           <div className="mb-8 p-5 rounded-2xl border flex gap-4 items-start" style={{borderColor:'rgba(255,215,0,0.3)',background:'rgba(255,215,0,0.03)'}}>
@@ -232,6 +298,7 @@ export default function VotePage() {
         </div>
       )}
 
+      {/* Bouton bas */}
       <div className="fixed bottom-0 inset-x-0 z-40 p-4 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A]/95 to-transparent">
         <div className="max-w-lg mx-auto">
           {step === 'select' ? (
