@@ -7,7 +7,6 @@ import { supabase } from '@/lib/supabase';
 function useCountdown(targetDate: string) {
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
   const [isOver, setIsOver] = useState(false);
-
   useEffect(() => {
     const update = () => {
       const diff = new Date(targetDate).getTime() - Date.now();
@@ -23,7 +22,6 @@ function useCountdown(targetDate: string) {
     const id = setInterval(update, 1000);
     return () => clearInterval(id);
   }, [targetDate]);
-
   return { timeLeft, isOver };
 }
 
@@ -68,20 +66,16 @@ export default function HomePage() {
     if (!code.trim()) return;
     setLoading(true);
     setError('');
-
     const cleanCode = code.trim().toUpperCase();
     const { data, error: err } = await supabase
       .from('voting_codes')
       .select('id, status')
       .eq('code', cleanCode)
       .single();
-
     setLoading(false);
-
     if (err || !data) { setError('❌ Code invalide. Vérifiez votre code et réessayez.'); return; }
     if (data.status === 'used') { setError('⚠️ Ce code a déjà été utilisé pour voter.'); return; }
     if (data.status === 'disabled') { setError('🚫 Ce code a été désactivé.'); return; }
-
     sessionStorage.setItem('vote_code_id', data.id);
     sessionStorage.setItem('vote_code', cleanCode);
     router.push('/vote');
@@ -93,17 +87,19 @@ export default function HomePage() {
 
       <div className="relative z-10 w-full max-w-lg flex flex-col items-center gap-8 page-enter">
 
+        {/* Logo CSL */}
         <div className="flex flex-col items-center gap-3 animate-float">
-          <div className="w-20 h-20 rounded-full bg-[#141414] flex items-center justify-center text-3xl border border-[#E8651A]/30" style={{boxShadow:'0 0 0 2px #E8651A, 0 0 30px rgba(232,101,26,0.5)'}}>
-            🏀
-          </div>
-          <p className="text-white/50 text-xs uppercase tracking-widest">Votre Club</p>
+          <img
+            src="/logo.png"
+            alt="CSL Basket St Vallier"
+            className="w-32 h-32 object-contain drop-shadow-[0_0_20px_rgba(232,101,26,0.5)]"
+          />
         </div>
 
         <div className="text-center flex flex-col items-center gap-2">
           <div className="flex items-center gap-3">
             <div className="h-px w-12 bg-gradient-to-r from-transparent to-[#E8651A]" />
-            <span className="text-[#E8651A] text-xs uppercase tracking-[0.3em] font-semibold">Édition 2026</span>
+            <span className="text-[#E8651A] text-xs uppercase tracking-[0.3em] font-semibold">CSL Basket St Vallier</span>
             <div className="h-px w-12 bg-gradient-to-l from-transparent to-[#E8651A]" />
           </div>
           <h1 style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-7xl sm:text-8xl text-white leading-none tracking-wide glow-text">
@@ -111,7 +107,7 @@ export default function HomePage() {
           </h1>
           <div className="flex gap-2 mt-1">
             {[...Array(5)].map((_, i) => (
-              <svg key={i} viewBox="0 0 51 49" className="w-5 h-5 text-[#E8651A]" fill="currentColor">
+              <svg key={i} viewBox="0 0 51 49" className="w-5 h-5" fill="#E8651A">
                 <path d="M25.5 0L31.4 18.6H51L35.8 30.1L41.7 48.7L25.5 37.2L9.3 48.7L15.2 30.1L0 18.6H19.6L25.5 0Z" />
               </svg>
             ))}
@@ -158,32 +154,27 @@ export default function HomePage() {
               />
               {error && <p className="text-red-400 text-sm text-center mt-1 animate-fade-in">{error}</p>}
             </div>
-
             <button
               type="submit"
               disabled={loading || !code.trim()}
               className="btn-shimmer w-full bg-[#E8651A] hover:bg-[#FF8040] disabled:opacity-40 disabled:cursor-not-allowed text-white py-4 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3"
               style={{fontFamily:'Bebas Neue,sans-serif', fontSize:'1.5rem', letterSpacing:'0.05em', boxShadow:'0 0 0 2px #E8651A, 0 0 30px rgba(232,101,26,0.5)'}}
             >
-              {loading ? (
-                <><div className="spinner" /> Vérification...</>
-              ) : (
-                <>
-                  <svg viewBox="0 0 51 49" className="w-6 h-6" fill="currentColor">
-                    <path d="M25.5 0L31.4 18.6H51L35.8 30.1L41.7 48.7L25.5 37.2L9.3 48.7L15.2 30.1L0 18.6H19.6L25.5 0Z" />
-                  </svg>
-                  VOTER MAINTENANT
-                </>
-              )}
+              {loading ? <><div className="spinner" /> Vérification...</> : <>
+                <svg viewBox="0 0 51 49" className="w-6 h-6" fill="currentColor">
+                  <path d="M25.5 0L31.4 18.6H51L35.8 30.1L41.7 48.7L25.5 37.2L9.3 48.7L15.2 30.1L0 18.6H19.6L25.5 0Z" />
+                </svg>
+                VOTER MAINTENANT
+              </>}
             </button>
           </form>
         )}
 
         <p className="text-white/25 text-xs text-center mt-4 leading-relaxed">
-          Un code par personne · Vote unique et définitif
+          Un code par personne · Vote unique et définitif<br />
+          CSL Basket St Vallier
         </p>
       </div>
-
       <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[#E8651A] to-transparent opacity-30" />
     </main>
   );
