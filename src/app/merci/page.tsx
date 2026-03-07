@@ -9,7 +9,6 @@ interface VoteResult {
   bonus: Player;
 }
 
-// Positions sur le demi-terrain (en %)
 const COURT_POSITIONS = [
   { top: '75%', left: '50%', label: 'Meneur' },
   { top: '55%', left: '20%', label: 'Ailier G' },
@@ -18,42 +17,75 @@ const COURT_POSITIONS = [
   { top: '30%', left: '70%', label: 'Intérieur D' },
 ];
 
-function CourtPlayer({ player, position, isBonus, index }: {
-  player: Player; position: typeof COURT_POSITIONS[0]; isBonus: boolean; index: number;
-}) {
+interface CourtPlayerProps {
+  player: Player;
+  position: { top: string; left: string; label: string };
+  isBonus: boolean;
+}
+
+function CourtPlayer({ player, position, isBonus }: CourtPlayerProps) {
+  const borderColor = isBonus ? '#FFD700' : '#E8651A';
+  const nameColor = isBonus ? '#FFD700' : 'white';
+  const shadowColor = isBonus
+    ? '0 0 0 2px #FFD700, 0 0 15px rgba(255,215,0,0.6)'
+    : '0 0 0 2px #E8651A, 0 0 10px rgba(232,101,26,0.5)';
+
   return (
-    <div className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1"
-      style={{top: position.top, left: position.left, zIndex: 10}}>
+    <div
+      className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1"
+      style={{ top: position.top, left: position.left, zIndex: 10 }}
+    >
       <div className="relative">
         {isBonus && (
-          <div className="absolute -top-4 left-1/2 -translate-x-1/2 whitespace-nowrap text-[9px] font-bold text-black px-1.5 py-0.5 rounded-full z-20"
-            style={{background:'#FFD700'}}>⭐ BONUS</div>
+          <div
+            className="absolute -top-4 left-1/2 -translate-x-1/2 whitespace-nowrap text-[9px] font-bold text-black px-1.5 py-0.5 rounded-full z-20"
+            style={{ background: '#FFD700' }}
+          >
+            ⭐ BONUS
+          </div>
         )}
-        <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full overflow-hidden border-2 flex-shrink-0"
-          style={{
-            borderColor: isBonus ? '#FFD700' : '#E8651A',
-            boxShadow: isBonus
-              ? '0 0 0 2px #FFD700, 0 0 15px rgba(255,215,0,0.6)'
-              : '0 0 0 2px #E8651A, 0 0 10px rgba(232,101,26,0.5)'
-          }}>
+        <div
+          className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full overflow-hidden border-2 flex-shrink-0"
+          style={{ borderColor, boxShadow: shadowColor }}
+        >
           {player.photo_url ? (
-            <img src={player.photo_url} alt={player.last_name} className="w-full h-full object-cover object-top" />
+            <img
+              src={player.photo_url}
+              alt={player.last_name}
+              className="w-full h-full object-cover object-top"
+            />
           ) : (
             <div className="w-full h-full bg-[#1A1A1A] flex items-center justify-center">
-              <span style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-lg text-[#E8651A]">
+              <span
+                style={{ fontFamily: 'Bebas Neue,sans-serif', color: '#E8651A' }}
+                className="text-lg"
+              >
                 {player.first_name[0]}{player.last_name[0]}
               </span>
             </div>
           )}
         </div>
-        <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center border border-[#0A0A0A]"
-          style={{background:'#E8651A'}}>
-          <span style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-[10px] text-white leading-none">{player.number}</span>
+        <div
+          className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center border border-[#0A0A0A]"
+          style={{ background: '#E8651A' }}
+        >
+          <span
+            style={{ fontFamily: 'Bebas Neue,sans-serif', color: 'white' }}
+            className="text-[10px] leading-none"
+          >
+            {player.number}
+          </span>
         </div>
       </div>
       <div className="text-center mt-1">
-        <p style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-[11px] sm:text-xs leading-tight"
-          style={{color: isBonus ? '#FFD700' : 'white', textShadow:'0 1px 4px rgba(0,0,0,0.9)'}}>
+        <p
+          style={{
+            fontFamily: 'Bebas Neue,sans-serif',
+            color: nameColor,
+            textShadow: '0 1px 4px rgba(0,0,0,0.9)',
+          }}
+          className="text-[11px] sm:text-xs leading-tight"
+        >
           {player.last_name.toUpperCase()}
         </p>
       </div>
@@ -87,11 +119,12 @@ export default function MerciPage() {
   return (
     <main className="min-h-screen pb-16 flex flex-col items-center px-4 py-8">
 
-      {/* Header */}
       <div className="flex flex-col items-center gap-3 mb-6 page-enter">
         <img src="/logo.png" alt="CSL" className="w-16 h-16 object-contain animate-float" />
         <div className="text-center">
-          <h1 style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-5xl text-white glow-text">MERCI !</h1>
+          <h1 style={{ fontFamily: 'Bebas Neue,sans-serif' }} className="text-5xl text-white glow-text">
+            MERCI !
+          </h1>
           <p className="text-white/50 text-sm mt-1">Votre sélection a bien été enregistrée</p>
         </div>
         <div className="flex items-center gap-1">
@@ -105,57 +138,52 @@ export default function MerciPage() {
 
       {/* Demi-terrain */}
       <div className="w-full max-w-sm mb-6 page-enter">
-        <p className="text-center text-white/40 text-xs uppercase tracking-widest mb-3">Votre équipe All-Star</p>
-        <div className="relative w-full rounded-2xl overflow-hidden border-2 border-[#E8651A]/40"
+        <p className="text-center text-white/40 text-xs uppercase tracking-widest mb-3">
+          Votre équipe All-Star
+        </p>
+        <div
+          className="relative w-full rounded-2xl overflow-hidden border-2 border-[#E8651A]/40"
           style={{
             paddingBottom: '110%',
             background: 'linear-gradient(180deg, #1a4a1a 0%, #1e5c1e 40%, #226622 70%, #1e5c1e 100%)',
-            boxShadow: '0 0 30px rgba(232,101,26,0.3)'
-          }}>
-
-          {/* Lignes terrain */}
+            boxShadow: '0 0 30px rgba(232,101,26,0.3)',
+          }}
+        >
           <div className="absolute inset-0">
-            {/* Arc principal */}
-            <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 110" preserveAspectRatio="none">
-              {/* Ligne de fond */}
+            <svg
+              className="absolute inset-0 w-full h-full"
+              viewBox="0 0 100 110"
+              preserveAspectRatio="none"
+            >
               <line x1="5" y1="5" x2="95" y2="5" stroke="rgba(255,255,255,0.3)" strokeWidth="0.5"/>
-              {/* Lignes côtés */}
               <line x1="5" y1="5" x2="5" y2="105" stroke="rgba(255,255,255,0.3)" strokeWidth="0.5"/>
               <line x1="95" y1="5" x2="95" y2="105" stroke="rgba(255,255,255,0.3)" strokeWidth="0.5"/>
-              {/* Ligne de fond bas */}
               <line x1="5" y1="105" x2="95" y2="105" stroke="rgba(255,255,255,0.3)" strokeWidth="0.5"/>
-              {/* Raquette */}
               <rect x="30" y="5" width="40" height="25" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="0.5"/>
-              {/* Cercle lancer franc */}
               <circle cx="50" cy="30" r="10" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="0.5"/>
-              {/* Arc à 3 points */}
               <path d="M 10 105 L 10 40 A 42 42 0 0 1 90 40 L 90 105" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="0.5"/>
-              {/* Cercle central panier */}
               <circle cx="50" cy="10" r="3" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="0.5"/>
-              {/* Point lancer franc */}
               <circle cx="50" cy="30" r="1" fill="rgba(255,255,255,0.5)"/>
             </svg>
-
-            {/* Logo au centre */}
-            <div className="absolute" style={{top:'45%', left:'50%', transform:'translate(-50%,-50%)', opacity:0.08}}>
+            <div
+              className="absolute"
+              style={{ top: '45%', left: '50%', transform: 'translate(-50%,-50%)', opacity: 0.08 }}
+            >
               <img src="/logo.png" alt="" className="w-24 h-24 object-contain" />
             </div>
-
-            {/* Joueurs */}
             {result.players.map((player, i) => (
               <CourtPlayer
                 key={player.id}
                 player={player}
                 position={COURT_POSITIONS[i]}
                 isBonus={player.id === result.bonus.id}
-                index={i}
               />
             ))}
           </div>
         </div>
       </div>
 
-      {/* Liste joueurs */}
+      {/* Liste récap */}
       <div className="w-full max-w-sm bg-[#141414] border border-[#1E1E1E] rounded-2xl overflow-hidden mb-6 page-enter">
         <div className="px-4 py-3 border-b border-[#1E1E1E] bg-[#0A0A0A]">
           <span className="text-white/50 text-xs uppercase tracking-widest font-semibold">Récapitulatif</span>
@@ -163,24 +191,49 @@ export default function MerciPage() {
         <div className="p-3 flex flex-col gap-2">
           {result.players.map((player, i) => {
             const isBonus = player.id === result.bonus.id;
+            const rowBorder = isBonus ? 'rgba(255,215,0,0.5)' : '#1E1E1E';
+            const rowBg = isBonus ? 'rgba(255,215,0,0.05)' : '#0A0A0A';
+            const nameColor = isBonus ? '#FFD700' : 'white';
             return (
-              <div key={player.id} className="flex items-center gap-3 p-2.5 rounded-xl border"
-                style={{borderColor: isBonus ? 'rgba(255,215,0,0.5)' : '#1E1E1E', background: isBonus ? 'rgba(255,215,0,0.05)' : '#0A0A0A'}}>
-                <span style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-xl text-[#E8651A] w-6 text-center">{i + 1}</span>
+              <div
+                key={player.id}
+                className="flex items-center gap-3 p-2.5 rounded-xl border"
+                style={{ borderColor: rowBorder, background: rowBg }}
+              >
+                <span
+                  style={{ fontFamily: 'Bebas Neue,sans-serif', color: '#E8651A' }}
+                  className="text-xl w-6 text-center"
+                >
+                  {i + 1}
+                </span>
                 <div className="w-9 h-9 rounded-full overflow-hidden bg-[#1E1E1E] flex-shrink-0 flex items-center justify-center">
-                  {player.photo_url
-                    ? <img src={player.photo_url} alt={player.last_name} className="w-full h-full object-cover" />
-                    : <span style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-sm text-[#E8651A]/50">{player.first_name[0]}</span>
-                  }
+                  {player.photo_url ? (
+                    <img src={player.photo_url} alt={player.last_name} className="w-full h-full object-cover" />
+                  ) : (
+                    <span
+                      style={{ fontFamily: 'Bebas Neue,sans-serif', color: 'rgba(232,101,26,0.5)' }}
+                      className="text-sm"
+                    >
+                      {player.first_name[0]}
+                    </span>
+                  )}
                 </div>
                 <div className="flex-1">
-                  <span className="font-semibold text-sm block" style={{color: isBonus ? '#FFD700' : 'white'}}>
+                  <span
+                    className="font-semibold text-sm block"
+                    style={{ color: nameColor }}
+                  >
                     {player.first_name} {player.last_name}
                   </span>
                   <span className="text-white/40 text-xs">#{player.number} · {player.position}</span>
                 </div>
                 {isBonus && (
-                  <span className="text-[10px] font-bold text-black px-2 py-0.5 rounded-full" style={{background:'#FFD700'}}>⭐ BONUS</span>
+                  <span
+                    className="text-[10px] font-bold text-black px-2 py-0.5 rounded-full"
+                    style={{ background: '#FFD700' }}
+                  >
+                    ⭐ BONUS
+                  </span>
                 )}
               </div>
             );
@@ -188,7 +241,10 @@ export default function MerciPage() {
         </div>
       </div>
 
-      <button onClick={() => router.push('/')} className="text-white/30 hover:text-[#E8651A] transition-colors text-sm">
+      <button
+        onClick={() => router.push('/')}
+        className="text-white/30 hover:text-[#E8651A] transition-colors text-sm"
+      >
         ← Retour à l&apos;accueil
       </button>
 
