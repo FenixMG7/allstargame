@@ -136,6 +136,9 @@ function CodesTab() {
   const [generating, setGenerating] = useState(false);
   const [codes, setCodes] = useState<{code:string;status:string}[]>([]);
   const [generated, setGenerated] = useState<string[]>([]);
+  const [searchCode, setSearchCode] = useState('');
+  const [invalidating, setInvalidating] = useState(false);
+  const [invalidateMsg, setInvalidateMsg] = useState('');
 
   useEffect(() => { fetchCodes(); }, []);
 
@@ -156,6 +159,32 @@ function CodesTab() {
     setGenerating(false);
   }
 
+  async function invalidateCode() {
+    setInvalidating(true);
+    setInvalidateMsg('');
+    const { data, error } = await supabase
+      .from('voting_codes')
+      .update({ status: 'disabled' })
+      .eq('code', searchCode.trim())
+      .eq('status', 'valid')
+      .select();
+    setInvalidating(false);
+    if (error || !data || data.length === 0) {
+      setInvalidateMsg('❌ Code introuvable ou déjà utilisé/invalidé.');
+    } else {
+      setInvalidateMsg(`✅ Code ${searchCode} invalidé avec succès.`);
+      setSearchCode('');
+      fetchCodes();
+    }
+    setTimeout(() => setInvalidateMsg(''), 4000);
+  }
+
+  async function quickInvalidate(code: string) {
+    if (!confirm(`Invalider le code ${code} ?`)) return;
+    await supabase.from('voting_codes').update({ status: 'disabled' }).eq('code', code);
+    fetchCodes();
+  }
+
   function exportCSV(data: string[], filename: string) {
     const csv = ['Code', ...data].join('\n');
     const blob = new Blob([csv], {type:'text/csv'});
@@ -166,14 +195,15 @@ function CodesTab() {
 
   const valid = codes.filter(c => c.status === 'valid').length;
   const used = codes.filter(c => c.status === 'used').length;
+  const disabled = codes.filter(c => c.status === 'disabled').length;
 
   return (
     <div className="flex flex-col gap-6">
       <div className="grid grid-cols-3 gap-4">
         {[
-          {label:'Valides',value:valid,color:'#4ade80'},
-          {label:'Utilisés',value:used,color:'#E8651A'},
-          {label:'Total',value:codes.length,color:'white'}
+          {label:'Valides', value:valid, color:'#4ade80'},
+          {label:'Utilisés', value:used, color:'#E8651A'},
+          {label:'Invalidés', value:disabled, color:'#f87171'},
         ].map(s => (
           <div key={s.label} className="bg-[#141414] border border-[#1E1E1E] rounded-xl p-4 text-center">
             <div style={{fontFamily:'Bebas Neue,sans-serif',color:s.color}} className="text-3xl">{s.value}</div>
@@ -181,6 +211,7 @@ function CodesTab() {
           </div>
         ))}
       </div>
+
       <div className="bg-[#141414] border border-[#1E1E1E] rounded-xl p-5 flex flex-col gap-4">
         <h3 className="font-semibold text-white text-sm uppercase tracking-wider">Générer des codes</h3>
         <div className="flex gap-3 items-end">
@@ -209,21 +240,59 @@ function CodesTab() {
           </div>
         )}
       </div>
+
+      <div className="bg-[#141414] border border-[#1E1E1E] rounded-xl p-5 flex flex-col gap-3">
+        <h3 className="font-semibold text-white text-sm uppercase tracking-wider">🚫 Invalider un code</h3>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={searchCode}
+            onChange={e => setSearchCode(e.target.value.toUpperCase())}
+            placeholder="ASG-XXXX-XXXX"
+            className="flex-1 bg-[#0A0A0A] border border-[#1E1E1E] rounded-lg px-3 py-2 text-white font-mono placeholder:text-white/20 focus:outline-none focus:border-[#E8651A] uppercase"
+          />
+          <button onClick={invalidateCode} disabled={!searchCode.trim() || invalidating}
+            className="font-semibold px-4 py-2 rounded-lg transition-all disabled:opacity-40 flex items-center gap-2 text-sm"
+            style={{background:'#b91c1c', color:'white'}}>
+            {invalidating ? <div className="spinner" style={{width:14,height:14,borderWidth:2}} /> : '🚫 Invalider'}
+          </button>
+        </div>
+        {invalidateMsg && (
+          <p className={`text-sm ${invalidateMsg.startsWith('✅') ? 'text-green-400' : 'text-red-400'}`}>
+            {invalidateMsg}
+          </p>
+        )}
+      </div>
+
       <button onClick={() => exportCSV(codes.map(c=>c.code), `tous-codes-${Date.now()}.csv`)}
         className="text-sm text-[#E8651A] border border-[#E8651A]/30 hover:border-[#E8651A] px-4 py-2 rounded-lg transition-all self-start">
         📥 Exporter tous les codes (CSV)
       </button>
+
       <div className="bg-[#141414] border border-[#1E1E1E] rounded-xl overflow-hidden">
         <table className="w-full admin-table">
-          <thead><tr><th className="text-left">Code</th><th className="text-left">Statut</th></tr></thead>
+          <thead><tr><th className="text-left">Code</th><th className="text-left">Statut</th><th className="text-left">Action</th></tr></thead>
           <tbody>
             {codes.slice(0,50).map(c => (
               <tr key={c.code}>
                 <td className="font-mono text-white/80 text-sm">{c.code}</td>
-                <td><span className="inline-block px-2 py-0.5 rounded-full text-xs font-bold uppercase"
-                  style={{background: c.status==='valid' ? 'rgba(74,222,128,0.2)' : 'rgba(232,101,26,0.2)', color: c.status==='valid' ? '#4ade80' : '#E8651A'}}>
-                  {c.status==='valid' ? 'Valide' : 'Utilisé'}
-                </span></td>
+                <td>
+                  <span className="inline-block px-2 py-0.5 rounded-full text-xs font-bold uppercase"
+                    style={{
+                      background: c.status==='valid' ? 'rgba(74,222,128,0.2)' : c.status==='disabled' ? 'rgba(248,113,113,0.2)' : 'rgba(232,101,26,0.2)',
+                      color: c.status==='valid' ? '#4ade80' : c.status==='disabled' ? '#f87171' : '#E8651A'
+                    }}>
+                    {c.status==='valid' ? 'Valide' : c.status==='disabled' ? 'Invalidé' : 'Utilisé'}
+                  </span>
+                </td>
+                <td>
+                  {c.status === 'valid' && (
+                    <button onClick={() => quickInvalidate(c.code)}
+                      className="text-red-400/40 hover:text-red-400 text-xs transition-colors px-1">
+                      🚫
+                    </button>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
@@ -309,7 +378,6 @@ function PlayersTab() {
       <div className="flex flex-col gap-3">
         {players.map(p => (
           <div key={p.id} className="bg-[#141414] border border-[#1E1E1E] rounded-xl p-4 flex items-center gap-4">
-            {/* Photo */}
             <div className="relative flex-shrink-0">
               <div className="w-14 h-14 rounded-full overflow-hidden bg-[#0A0A0A] border border-[#1E1E1E] flex items-center justify-center">
                 {p.photo_url
@@ -317,7 +385,6 @@ function PlayersTab() {
                   : <span style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-lg text-[#E8651A]/50">{p.first_name[0]}</span>
                 }
               </div>
-              {/* Bouton upload */}
               <label className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110"
                 style={{background:'#E8651A'}}>
                 {uploadingId === p.id
@@ -328,8 +395,6 @@ function PlayersTab() {
                   onChange={e => e.target.files?.[0] && uploadPhoto(p.id, e.target.files[0])} />
               </label>
             </div>
-
-            {/* Infos */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <span style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-lg text-[#E8651A]">#{p.number}</span>
@@ -337,8 +402,6 @@ function PlayersTab() {
               </div>
               <span className="text-white/40 text-xs">{p.position}</span>
             </div>
-
-            {/* Actions */}
             <div className="flex items-center gap-3 flex-shrink-0">
               <button onClick={() => toggleActive(p.id, p.is_active)}
                 className="w-10 h-5 rounded-full transition-all relative"
