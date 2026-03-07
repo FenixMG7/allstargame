@@ -92,7 +92,7 @@ export default function HomePage() {
           <img
             src="/logo.png"
             alt="CSL Basket St Vallier"
-            className="w-32 h-32 object-contain drop-shadow-[0_0_20px_rgba(232,101,26,0.5)]"
+            className="w-100 h-100 object-contain drop-shadow-[0_0_20px_rgba(232,101,26,0.5)]"
           />
         </div>
 
@@ -176,6 +176,14 @@ export default function HomePage() {
         </p>
       </div>
       <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[#E8651A] to-transparent opacity-30" />
+
+      <button
+        onClick={() => router.push('/admin/login')}
+        className="absolute bottom-4 right-4 text-white/10 hover:text-white/30 transition-colors text-xs"
+      >
+        😶‍🌫️
+      </button>
+
     </main>
   );
 }
