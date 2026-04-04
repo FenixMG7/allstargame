@@ -155,7 +155,13 @@ function CodesTab() {
       return `ASG-${seg(4)}-${seg(4)}`;
     });
     const { error } = await supabase.from('voting_codes').insert(newCodes.map(code => ({code,status:'valid'})));
-    if (!error) { setGenerated(newCodes); fetchCodes(); }
+    if (error) {
+      alert('❌ Erreur lors de la génération des codes: ' + error.message);
+      console.error('Generate codes error:', error);
+    } else {
+      setGenerated(newCodes);
+      fetchCodes();
+    }
     setGenerating(false);
   }
 
@@ -169,7 +175,10 @@ function CodesTab() {
       .eq('status', 'valid')
       .select();
     setInvalidating(false);
-    if (error || !data || data.length === 0) {
+    if (error) {
+      setInvalidateMsg('❌ Erreur: ' + error.message);
+      console.error('Invalidate code error:', error);
+    } else if (!data || data.length === 0) {
       setInvalidateMsg('❌ Code introuvable ou déjà utilisé/invalidé.');
     } else {
       setInvalidateMsg(`✅ Code ${searchCode} invalidé avec succès.`);
@@ -181,7 +190,12 @@ function CodesTab() {
 
   async function quickInvalidate(code: string) {
     if (!confirm(`Invalider le code ${code} ?`)) return;
-    await supabase.from('voting_codes').update({ status: 'disabled' }).eq('code', code);
+    const { error } = await supabase.from('voting_codes').update({ status: 'disabled' }).eq('code', code);
+    if (error) {
+      alert('❌ Erreur lors de l\'invalidation: ' + error.message);
+      console.error('Quick invalidate error:', error);
+      return;
+    }
     fetchCodes();
   }
 
@@ -318,7 +332,13 @@ function PlayersTab() {
   async function addPlayer(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
-    await supabase.from('players').insert({...form, number: Number(form.number), is_active: true});
+    const { error } = await supabase.from('players').insert({...form, number: Number(form.number), is_active: true});
+    if (error) {
+      alert('❌ Erreur lors de l\'ajout: ' + error.message);
+      console.error('Add player error:', error);
+      setSaving(false);
+      return;
+    }
     setForm({first_name:'',last_name:'',number:'',position:'PG'});
     fetchPlayers();
     setSaving(false);
@@ -331,19 +351,35 @@ function PlayersTab() {
     const { error: uploadError } = await supabase.storage.from('players').upload(path, file, { upsert: true });
     if (uploadError) { alert('Erreur upload: ' + uploadError.message); setUploadingId(null); return; }
     const { data: urlData } = supabase.storage.from('players').getPublicUrl(path);
-    await supabase.from('players').update({ photo_url: urlData.publicUrl + '?t=' + Date.now() }).eq('id', playerId);
+    const { error: updateError } = await supabase.from('players').update({ photo_url: urlData.publicUrl + '?t=' + Date.now() }).eq('id', playerId);
+    if (updateError) {
+      alert('❌ Erreur lors de la mise à jour de la photo: ' + updateError.message);
+      console.error('Update photo error:', updateError);
+      setUploadingId(null);
+      return;
+    }
     fetchPlayers();
     setUploadingId(null);
   }
 
   async function toggleActive(id: string, current: boolean) {
-    await supabase.from('players').update({is_active: !current}).eq('id', id);
+    const { error } = await supabase.from('players').update({is_active: !current}).eq('id', id);
+    if (error) {
+      alert('❌ Erreur lors de la modification: ' + error.message);
+      console.error('Toggle active error:', error);
+      return;
+    }
     fetchPlayers();
   }
 
   async function deletePlayer(id: string) {
     if (!confirm('Supprimer ce joueur ?')) return;
-    await supabase.from('players').delete().eq('id', id);
+    const { error } = await supabase.from('players').delete().eq('id', id);
+    if (error) {
+      alert('❌ Erreur lors de la suppression: ' + error.message);
+      console.error('Delete player error:', error);
+      return;
+    }
     fetchPlayers();
   }
 
@@ -432,7 +468,13 @@ function SettingsTab() {
 
   async function save() {
     setSaving(true);
-    await supabase.from('vote_settings').update(settings).eq('id',1);
+    const { error } = await supabase.from('vote_settings').update(settings).eq('id',1);
+    if (error) {
+      alert('❌ Erreur lors de la sauvegarde: ' + error.message);
+      console.error('Save settings error:', error);
+      setSaving(false);
+      return;
+    }
     setSaving(false);
     alert('Paramètres sauvegardés !');
   }
@@ -440,9 +482,24 @@ function SettingsTab() {
   async function resetVotes() {
     if (!confirm('⚠️ Supprimer TOUS les votes ?\n\nCette action est IRRÉVERSIBLE.')) return;
     if (!confirm('Êtes-vous VRAIMENT sûr ?')) return;
-    await supabase.from('votes').delete().neq('id','00000000-0000-0000-0000-000000000000');
-    await supabase.from('voting_codes').update({status:'valid',used_at:null}).neq('id','00000000-0000-0000-0000-000000000000');
-    alert('Votes réinitialisés.');
+    
+    // D'abord supprimer les votes (qui ont une clé étrangère vers voting_codes)
+    const { error: deleteError } = await supabase.from('votes').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    if (deleteError) {
+      alert('❌ Erreur lors de la suppression des votes: ' + deleteError.message);
+      console.error('Delete votes error:', deleteError);
+      return;
+    }
+    
+    // Ensuite réinitialiser les codes
+    const { error: resetError } = await supabase.from('voting_codes').update({status:'valid',used_at:null}).neq('id','00000000-0000-0000-0000-000000000000');
+    if (resetError) {
+      alert('❌ Erreur lors de la réinitialisation des codes: ' + resetError.message);
+      console.error('Reset codes error:', resetError);
+      return;
+    }
+    
+    alert('✅ Votes réinitialisés avec succès !');
   }
 
   if (loading) return <div className="spinner" style={{width:24,height:24,borderWidth:2}} />;
