@@ -1,6 +1,1 @@
-.env.local
-.env*.local
-node_modules/
-.next/
-out/
-*.log
+Nothing should be ignored based on the provided file changes, as they only include source/config files (.md, .tsx) without any build artifacts, dependencies, or temporary files.
