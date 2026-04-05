@@ -10,11 +10,20 @@ interface PlayerScore {
   bonuses: number;
 }
 
+interface Coach {
+  id: string;
+  first_name: string;
+  last_name: string;
+  photo_url: string | null;
+  is_active: boolean;
+}
+
 function AdminNav({ active, onChange }: { active: string; onChange: (t: string) => void }) {
   const tabs = [
     { id: 'results', label: '📊 Résultats' },
     { id: 'codes', label: '🎫 Codes' },
     { id: 'players', label: '🏀 Joueurs' },
+    { id: 'coaches', label: '🧑‍💼 Coachs' },
     { id: 'settings', label: '⚙️ Paramètres' },
   ];
   return (
@@ -211,7 +220,6 @@ function CodesTab() {
           </div>
         ))}
       </div>
-
       <div className="bg-[#141414] border border-[#1E1E1E] rounded-xl p-5 flex flex-col gap-4">
         <h3 className="font-semibold text-white text-sm uppercase tracking-wider">Générer des codes</h3>
         <div className="flex gap-3 items-end">
@@ -240,17 +248,13 @@ function CodesTab() {
           </div>
         )}
       </div>
-
       <div className="bg-[#141414] border border-[#1E1E1E] rounded-xl p-5 flex flex-col gap-3">
         <h3 className="font-semibold text-white text-sm uppercase tracking-wider">🚫 Invalider un code</h3>
         <div className="flex gap-2">
-          <input
-            type="text"
-            value={searchCode}
+          <input type="text" value={searchCode}
             onChange={e => setSearchCode(e.target.value.toUpperCase())}
             placeholder="ASG-XXXX-XXXX"
-            className="flex-1 bg-[#0A0A0A] border border-[#1E1E1E] rounded-lg px-3 py-2 text-white font-mono placeholder:text-white/20 focus:outline-none focus:border-[#E8651A] uppercase"
-          />
+            className="flex-1 bg-[#0A0A0A] border border-[#1E1E1E] rounded-lg px-3 py-2 text-white font-mono placeholder:text-white/20 focus:outline-none focus:border-[#E8651A] uppercase" />
           <button onClick={invalidateCode} disabled={!searchCode.trim() || invalidating}
             className="font-semibold px-4 py-2 rounded-lg transition-all disabled:opacity-40 flex items-center gap-2 text-sm"
             style={{background:'#b91c1c', color:'white'}}>
@@ -258,17 +262,13 @@ function CodesTab() {
           </button>
         </div>
         {invalidateMsg && (
-          <p className={`text-sm ${invalidateMsg.startsWith('✅') ? 'text-green-400' : 'text-red-400'}`}>
-            {invalidateMsg}
-          </p>
+          <p className={`text-sm ${invalidateMsg.startsWith('✅') ? 'text-green-400' : 'text-red-400'}`}>{invalidateMsg}</p>
         )}
       </div>
-
       <button onClick={() => exportCSV(codes.map(c=>c.code), `tous-codes-${Date.now()}.csv`)}
         className="text-sm text-[#E8651A] border border-[#E8651A]/30 hover:border-[#E8651A] px-4 py-2 rounded-lg transition-all self-start">
         📥 Exporter tous les codes (CSV)
       </button>
-
       <div className="bg-[#141414] border border-[#1E1E1E] rounded-xl overflow-hidden">
         <table className="w-full admin-table">
           <thead><tr><th className="text-left">Code</th><th className="text-left">Statut</th><th className="text-left">Action</th></tr></thead>
@@ -276,21 +276,16 @@ function CodesTab() {
             {codes.slice(0,50).map(c => (
               <tr key={c.code}>
                 <td className="font-mono text-white/80 text-sm">{c.code}</td>
-                <td>
-                  <span className="inline-block px-2 py-0.5 rounded-full text-xs font-bold uppercase"
-                    style={{
-                      background: c.status==='valid' ? 'rgba(74,222,128,0.2)' : c.status==='disabled' ? 'rgba(248,113,113,0.2)' : 'rgba(232,101,26,0.2)',
-                      color: c.status==='valid' ? '#4ade80' : c.status==='disabled' ? '#f87171' : '#E8651A'
-                    }}>
-                    {c.status==='valid' ? 'Valide' : c.status==='disabled' ? 'Invalidé' : 'Utilisé'}
-                  </span>
-                </td>
+                <td><span className="inline-block px-2 py-0.5 rounded-full text-xs font-bold uppercase"
+                  style={{
+                    background: c.status==='valid' ? 'rgba(74,222,128,0.2)' : c.status==='disabled' ? 'rgba(248,113,113,0.2)' : 'rgba(232,101,26,0.2)',
+                    color: c.status==='valid' ? '#4ade80' : c.status==='disabled' ? '#f87171' : '#E8651A'
+                  }}>
+                  {c.status==='valid' ? 'Valide' : c.status==='disabled' ? 'Invalidé' : 'Utilisé'}
+                </span></td>
                 <td>
                   {c.status === 'valid' && (
-                    <button onClick={() => quickInvalidate(c.code)}
-                      className="text-red-400/40 hover:text-red-400 text-xs transition-colors px-1">
-                      🚫
-                    </button>
+                    <button onClick={() => quickInvalidate(c.code)} className="text-red-400/40 hover:text-red-400 text-xs transition-colors px-1">🚫</button>
                   )}
                 </td>
               </tr>
@@ -374,7 +369,6 @@ function PlayersTab() {
           </button>
         </form>
       </div>
-
       <div className="flex flex-col gap-3">
         {players.map(p => (
           <div key={p.id} className="bg-[#141414] border border-[#1E1E1E] rounded-xl p-4 flex items-center gap-4">
@@ -418,17 +412,125 @@ function PlayersTab() {
   );
 }
 
+function CoachesTab() {
+  const [coaches, setCoaches] = useState<Coach[]>([]);
+  const [form, setForm] = useState({first_name:'',last_name:''});
+  const [saving, setSaving] = useState(false);
+  const [uploadingId, setUploadingId] = useState<string|null>(null);
+
+  useEffect(() => { fetchCoaches(); }, []);
+
+  async function fetchCoaches() {
+    const { data } = await supabase.from('coaches').select('*').order('last_name');
+    if (data) setCoaches(data);
+  }
+
+  async function addCoach(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    await supabase.from('coaches').insert({...form, is_active: true});
+    setForm({first_name:'',last_name:''});
+    fetchCoaches();
+    setSaving(false);
+  }
+
+  async function uploadPhoto(coachId: string, file: File) {
+    setUploadingId(coachId);
+    const ext = file.name.split('.').pop();
+    const path = `coach-${coachId}.${ext}`;
+    const { error: uploadError } = await supabase.storage.from('players').upload(path, file, { upsert: true });
+    if (uploadError) { alert('Erreur upload: ' + uploadError.message); setUploadingId(null); return; }
+    const { data: urlData } = supabase.storage.from('players').getPublicUrl(path);
+    await supabase.from('coaches').update({ photo_url: urlData.publicUrl + '?t=' + Date.now() }).eq('id', coachId);
+    fetchCoaches();
+    setUploadingId(null);
+  }
+
+  async function toggleActive(id: string, current: boolean) {
+    await supabase.from('coaches').update({is_active: !current}).eq('id', id);
+    fetchCoaches();
+  }
+
+  async function deleteCoach(id: string) {
+    if (!confirm('Supprimer ce coach ?')) return;
+    await supabase.from('coaches').delete().eq('id', id);
+    fetchCoaches();
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="bg-[#141414] border border-[#1E1E1E] rounded-xl p-5">
+        <h3 className="font-semibold text-white text-sm uppercase tracking-wider mb-4">Ajouter un coach</h3>
+        <form onSubmit={addCoach} className="grid grid-cols-2 gap-3">
+          <input placeholder="Prénom" value={form.first_name}
+            onChange={e => setForm(prev => ({...prev, first_name: e.target.value}))} required
+            className="bg-[#0A0A0A] border border-[#1E1E1E] rounded-lg px-3 py-2 text-white placeholder:text-white/20 focus:outline-none focus:border-[#E8651A]" />
+          <input placeholder="Nom" value={form.last_name}
+            onChange={e => setForm(prev => ({...prev, last_name: e.target.value}))} required
+            className="bg-[#0A0A0A] border border-[#1E1E1E] rounded-lg px-3 py-2 text-white placeholder:text-white/20 focus:outline-none focus:border-[#E8651A]" />
+          <button type="submit" disabled={saving}
+            className="col-span-2 font-semibold py-2 rounded-lg transition-all disabled:opacity-50"
+            style={{background:'#E8651A',color:'white'}}>
+            {saving ? 'Ajout...' : '+ Ajouter le coach'}
+          </button>
+        </form>
+      </div>
+      <div className="flex flex-col gap-3">
+        {coaches.map(c => (
+          <div key={c.id} className="bg-[#141414] border border-[#1E1E1E] rounded-xl p-4 flex items-center gap-4">
+            <div className="relative flex-shrink-0">
+              <div className="w-14 h-14 rounded-full overflow-hidden bg-[#0A0A0A] border border-[#1E1E1E] flex items-center justify-center">
+                {c.photo_url
+                  ? <img src={c.photo_url} alt={c.last_name} className="w-full h-full object-cover" />
+                  : <span style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-lg text-[#E8651A]/50">{c.first_name[0]}</span>
+                }
+              </div>
+              <label className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110"
+                style={{background:'#E8651A'}}>
+                {uploadingId === c.id
+                  ? <div className="spinner" style={{width:12,height:12,borderWidth:2,borderColor:'white',borderTopColor:'transparent'}} />
+                  : <span className="text-white text-xs">📷</span>
+                }
+                <input type="file" accept="image/*" className="hidden"
+                  onChange={e => e.target.files?.[0] && uploadPhoto(c.id, e.target.files[0])} />
+              </label>
+            </div>
+            <div className="flex-1 min-w-0">
+              <span className="font-semibold text-white truncate block">{c.first_name} {c.last_name}</span>
+              <span className="text-white/40 text-xs">Coach</span>
+            </div>
+            <div className="flex items-center gap-3 flex-shrink-0">
+              <button onClick={() => toggleActive(c.id, c.is_active)}
+                className="w-10 h-5 rounded-full transition-all relative"
+                style={{background: c.is_active ? '#4ade80' : '#1E1E1E'}}>
+                <span className="absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all"
+                  style={{left: c.is_active ? '22px' : '2px'}} />
+              </button>
+              <button onClick={() => deleteCoach(c.id)} className="text-red-400/40 hover:text-red-400 transition-colors">🗑</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function SettingsTab() {
   const [settings, setSettings] = useState({is_open:false,event_name:'',event_date:''});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [siteUrl, setSiteUrl] = useState('');
 
   useEffect(() => {
+    setSiteUrl(window.location.origin);
     supabase.from('vote_settings').select('*').single().then(({data}) => {
       if (data) setSettings(data);
       setLoading(false);
     });
   }, []);
+
+  const resultatsUrl = `${siteUrl}/resultats`;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(resultatsUrl)}&bgcolor=141414&color=E8651A&qzone=2`;
 
   async function save() {
     setSaving(true);
@@ -445,10 +547,42 @@ function SettingsTab() {
     alert('Votes réinitialisés.');
   }
 
+  async function resetEverything() {
+    if (!confirm('💀 RÉINITIALISATION TOTALE\n\nCeci va supprimer :\n- Tous les votes\n- Tous les codes\n- Tous les joueurs\n- Tous les coachs\n\nCette action est IRRÉVERSIBLE !')) return;
+    if (!confirm('⚠️ DERNIÈRE CHANCE — Êtes-vous ABSOLUMENT sûr ?')) return;
+    await supabase.from('votes').delete().neq('id','00000000-0000-0000-0000-000000000000');
+    await supabase.from('voting_codes').delete().neq('id','00000000-0000-0000-0000-000000000000');
+    await supabase.from('players').delete().neq('id','00000000-0000-0000-0000-000000000000');
+    await supabase.from('coaches').delete().neq('id','00000000-0000-0000-0000-000000000000');
+    alert('✅ Réinitialisation totale effectuée.');
+  }
+
   if (loading) return <div className="spinner" style={{width:24,height:24,borderWidth:2}} />;
 
   return (
     <div className="flex flex-col gap-6 max-w-md">
+
+      {/* QR Code */}
+      <div className="bg-[#141414] border border-[#E8651A]/30 rounded-xl p-5 flex flex-col gap-4">
+        <h3 className="font-semibold text-white text-sm uppercase tracking-wider">📱 QR Code Résultats</h3>
+        <p className="text-white/40 text-xs">Affichez ce QR code sur l&apos;écran TV pour que les spectateurs voient les résultats en direct.</p>
+        <div className="flex flex-col items-center gap-3">
+          <div className="p-3 rounded-xl bg-[#0A0A0A] border border-[#1E1E1E]">
+            <img src={qrUrl} alt="QR Code" className="w-40 h-40" />
+          </div>
+          <div className="w-full bg-[#0A0A0A] rounded-lg px-3 py-2 border border-[#1E1E1E] flex items-center justify-between gap-2">
+            <span className="text-white/50 text-xs font-mono truncate">{resultatsUrl}</span>
+            <button onClick={() => {navigator.clipboard.writeText(resultatsUrl); alert('Lien copié !');}}
+              className="text-[#E8651A] text-xs hover:underline flex-shrink-0">📋 Copier</button>
+          </div>
+          <a href={resultatsUrl} target="_blank" rel="noopener noreferrer"
+            className="w-full text-center py-2.5 rounded-lg text-sm font-semibold border border-[#E8651A]/40 text-[#E8651A] hover:bg-[#E8651A]/10 transition-all">
+            🔗 Ouvrir la page résultats
+          </a>
+        </div>
+      </div>
+
+      {/* Paramètres */}
       <div className="bg-[#141414] border border-[#1E1E1E] rounded-xl p-5 flex flex-col gap-4">
         <h3 className="font-semibold text-white text-sm uppercase tracking-wider">Paramètres</h3>
         <div className="flex flex-col gap-2">
@@ -480,14 +614,27 @@ function SettingsTab() {
           {saving ? 'Sauvegarde...' : '💾 Sauvegarder'}
         </button>
       </div>
-      <div className="rounded-xl p-5 flex flex-col gap-3"
+
+      {/* Zone dangereuse */}
+      <div className="rounded-xl p-5 flex flex-col gap-4"
         style={{background:'rgba(153,27,27,0.2)',border:'1px solid rgba(153,27,27,0.5)'}}>
         <h3 className="font-semibold text-red-400 text-sm uppercase tracking-wider">⚠️ Zone dangereuse</h3>
-        <p className="text-white/40 text-xs">Supprime tous les votes de manière irréversible.</p>
-        <button onClick={resetVotes} className="font-semibold py-2 rounded-lg transition-all text-sm text-white"
-          style={{background:'#b91c1c'}}>
-          🗑 Réinitialiser tous les votes
-        </button>
+        <div className="flex flex-col gap-2">
+          <p className="text-white/40 text-xs">Réinitialise uniquement les votes (garde joueurs et codes).</p>
+          <button onClick={resetVotes} className="font-semibold py-2 rounded-lg transition-all text-sm text-white"
+            style={{background:'#b91c1c'}}>
+            🗑 Réinitialiser les votes
+          </button>
+        </div>
+        <div className="h-px bg-red-900/40" />
+        <div className="flex flex-col gap-2">
+          <p className="text-white/40 text-xs">💀 Supprime absolument tout — votes, codes, joueurs et coachs.</p>
+          <button onClick={resetEverything}
+            className="font-semibold py-2 rounded-lg transition-all text-sm text-white border border-red-400/50"
+            style={{background:'rgba(153,27,27,0.5)'}}>
+            💀 RÉINITIALISATION TOTALE
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -545,6 +692,7 @@ export default function AdminPage() {
         {tab === 'results' && <ResultsTab />}
         {tab === 'codes' && <CodesTab />}
         {tab === 'players' && <PlayersTab />}
+        {tab === 'coaches' && <CoachesTab />}
         {tab === 'settings' && <SettingsTab />}
       </div>
     </main>
