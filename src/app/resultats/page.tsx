@@ -23,60 +23,47 @@ function StarFrame({ isBonus }: { isBonus: boolean }) {
   
   return (
     <svg
-      viewBox="0 0 120 120"
-      width="90"
-      height="90"
-      className="absolute inset-0 -m-3"
-      style={{ zIndex: 1 }}
-    >
-      <defs>
-        <filter id={`glow-intense-${isBonus ? 'gold' : 'orange'}`} x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="3" result="coloredBlur" />
-          <feMerge>
-            <feMergeNode in="coloredBlur" />
-            <feMergeNode in="coloredBlur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-        <linearGradient id={`grad-${isBonus ? 'gold' : 'orange'}`} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor={color} stopOpacity="1" />
-          <stop offset="100%" stopColor={isBonus ? '#B8860B' : '#A04000'} stopOpacity="1" />
-        </linearGradient>
-      </defs>
-      
-      {/* Etoile de fond pour l'épaisseur */}
-      <polygon
-        points="60,10 74,42 110,42 80,64 92,100 60,76 28,100 40,64 10,42 46,42"
-        fill={`url(#grad-${isBonus ? 'gold' : 'orange'})`}
-        opacity="0.2"
-        filter={`url(#glow-intense-${isBonus ? 'gold' : 'orange'})`}
-      />
+  className="absolute inset-0 w-full h-full"
+  viewBox="0 0 100 115"
+  preserveAspectRatio="none"
+>
+  {/* Ligne de fond (baseline) */}
+  <line x1="0" y1="2" x2="100" y2="2" stroke="rgba(255,255,255,0.9)" strokeWidth="0.5"/>
 
-      {/* Etoile principale avec trait épais et brillant */}
-      <polygon
-        points="60,10 74,42 110,42 80,64 92,100 60,76 28,100 40,64 10,42 46,42"
-        fill="rgba(0,0,0,0.4)"
-        stroke={color}
-        strokeWidth="3"
-        filter={`url(#glow-intense-${isBonus ? 'gold' : 'orange'})`}
-        style={{
-          animation: isBonus
-            ? 'pulse-gold 1.5s ease-in-out infinite'
-            : 'pulse-orange 2s ease-in-out infinite',
-        }}
-      />
-      
-      {/* Points décoratifs pour le bonus */}
-      {isBonus && [0,1,2,3,4].map(i => {
-        const angle = (i * 72 - 90) * Math.PI / 180;
-        const x = 60 + 52 * Math.cos(angle);
-        const y = 60 + 52 * Math.sin(angle);
-        return (
-          <circle key={i} cx={x} cy={y} r="3" fill="#FFF"
-            style={{ filter: `drop-shadow(0 0 5px ${color})`, opacity: 0.9 }} />
-        );
-      })}
-    </svg>
+  {/* Raquette (clé) */}
+  <rect x="35" y="2" width="30" height="28" fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth="0.5"/>
+
+  {/* Ligne lancer franc */}
+  <line x1="35" y1="30" x2="65" y2="30" stroke="rgba(255,255,255,0.9)" strokeWidth="0.5"/>
+
+  {/* Cercle lancer franc (extérieur plein) */}
+  <path d="M 35 30 A 15 15 0 0 0 65 30" fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth="0.5"/>
+
+  {/* Cercle lancer franc (intérieur pointillé) */}
+  <path d="M 35 30 A 15 15 0 0 1 65 30" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="0.5" strokeDasharray="1.5,1.5"/>
+
+  {/* Panneau */}
+  <line x1="45" y1="6" x2="55" y2="6" stroke="rgba(255,255,255,0.9)" strokeWidth="0.7"/>
+
+  {/* Cercle panier */}
+  <circle cx="50" cy="9" r="1.8" fill="none" stroke="#E8651A" strokeWidth="0.7"/>
+
+  {/* Zone restrictive (no-charge semi-circle) */}
+  <path d="M 44 12 A 6 6 0 0 0 56 12" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="0.4"/>
+
+  {/* Ligne 3 points (coins) */}
+  <line x1="10" y1="2" x2="10" y2="32" stroke="rgba(255,255,255,0.9)" strokeWidth="0.5"/>
+  <line x1="90" y1="2" x2="90" y2="32" stroke="rgba(255,255,255,0.9)" strokeWidth="0.5"/>
+
+  {/* Arc 3 points (corrigé et centré sur le panier) */}
+  <path d="M 10 32 A 40 40 0 0 0 90 32" fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth="0.5"/>
+
+  {/* Ligne médiane */}
+  <line x1="0" y1="113" x2="100" y2="113" stroke="rgba(255,255,255,0.9)" strokeWidth="0.5"/>
+
+  {/* Cercle central (demi visible) */}
+  <circle cx="50" cy="113" r="15" fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth="0.5"/>
+</svg>
   );
 }
 
