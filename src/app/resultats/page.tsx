@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -72,7 +71,8 @@ function BasketballCourt3D() {
       </g>
       <path d="M 170 130 Q 200 155 230 130" stroke="rgba(255,255,255,0.3)" strokeWidth="1" fill="none"/>
       <line x1="175" y1="95" x2="225" y2="95" stroke="rgba(255,255,255,0.8)" strokeWidth="3" filter="url(#glow-white)"/>
-      <line x1="200" y1="95" x2="200" y2="110" stroke="rgba(255,255,255,0.5)" strokeWidth="1.5"/>
+      {/* MODIFICATION 2 : Support panier centré */}
+      <line x1="200" y1="95" x2="200" y2="115" stroke="rgba(255,255,255,0.5)" strokeWidth="1.5"/>
       <circle cx="200" cy="115" r="12" fill="url(#rimGlow)"/>
       <circle cx="200" cy="115" r="12" stroke="#E8651A" strokeWidth="3" fill="none" filter="url(#glow-strong)"/>
       <g stroke="rgba(255,255,255,0.2)" strokeWidth="0.5">
@@ -98,14 +98,21 @@ function StarFrame({ isBonus }: { isBonus: boolean }) {
   const color = isBonus ? '#FFD700' : '#E8651A';
   const filterId = isBonus ? 'star-glow-gold' : 'star-glow-orange';
   return (
-    <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100">
+    /* MODIFICATION 1 : Étoile plus grande via les dimensions et marges */
+    <svg viewBox="0 0 110 110" width="92" height="92" className="absolute inset-0 -m-3.5" style={{ zIndex: 1 }}>
       <defs>
         <filter id={filterId} x="-50%" y="-50%" width="200%" height="200%">
           <feGaussianBlur stdDeviation="2" result="blur"/>
           <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
       </defs>
-      <circle cx="50" cy="50" r="45" fill="none" stroke={color} strokeWidth="3" filter={`url(#${filterId})`} opacity="0.8"/>
+      <polygon
+        points="55,4 67,38 103,38 75,59 86,94 55,73 24,94 35,59 7,38 43,38"
+        fill="none"
+        stroke={color}
+        strokeWidth="3.5"
+        filter={`url(#${filterId})`}
+      />
     </svg>
   );
 }
@@ -157,13 +164,15 @@ function CourtPlayer({ player, position, isBonus, rank, votes, animDelay }: Cour
           className="absolute rounded-full overflow-hidden border-2 border-[#0A0A0A]"
           style={{ zIndex: 2, top: 6, left: 6, right: 6, bottom: 6, boxShadow: 'inset 0 0 10px rgba(0,0,0,0.8), 0 5px 15px rgba(0,0,0,0.6)' }}
         >
-          {player.photo_url ? (
-            <img src={player.photo_url} alt={player.last_name} className="w-full h-full object-cover object-top" style={{ filter: 'contrast(1.1) saturate(1.1)' }}/>
-          ) : (
-            <div className="w-full h-full bg-[#1A1A1A] flex items-center justify-center">
-              <span style={{ fontFamily: 'Bebas Neue,sans-serif', color: '#E8651A' }} className="text-lg">{player.first_name[0]}{player.last_name[0]}</span>
-            </div>
-          )}
+          {/* MODIFICATION 3 : Initiales toujours présentes en fond/overlay */}
+          <div className="w-full h-full bg-[#1A1A1A] flex items-center justify-center">
+            {player.photo_url ? (
+              <img src={player.photo_url} alt={player.last_name} className="w-full h-full object-cover object-top" style={{ filter: 'contrast(1.1) saturate(1.1)' }}/>
+            ) : null}
+            <span className="absolute" style={{ fontFamily: 'Bebas Neue,sans-serif', color: 'white', fontSize: 14, textShadow: '0 2px 4px rgba(0,0,0,0.9)' }}>
+              {player.first_name[0]}{player.last_name[0]}
+            </span>
+          </div>
         </div>
         <div
           className="absolute -bottom-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center"
@@ -325,11 +334,12 @@ export default function ResultatsPage() {
                   )}
                 </div>
                 <div className="w-11 h-11 rounded-full overflow-hidden bg-[#1E1E1E] flex-shrink-0 flex items-center justify-center" style={{ border: `2px solid ${i < 5 ? '#E8651A' : '#333'}` }}>
-                  {s.player.photo_url ? (
-                    <img src={s.player.photo_url} alt={s.player.last_name} className="w-full h-full object-cover" />
-                  ) : (
-                    <span style={{ fontFamily: 'Bebas Neue,sans-serif', color: 'rgba(232,101,26,0.5)' }} className="text-lg">{s.player.first_name[0]}</span>
-                  )}
+                  <div className="w-full h-full relative flex items-center justify-center">
+                    {s.player.photo_url ? (
+                      <img src={s.player.photo_url} alt={s.player.last_name} className="w-full h-full object-cover" />
+                    ) : null}
+                    <span className="absolute" style={{ fontFamily: 'Bebas Neue,sans-serif', color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>{s.player.first_name[0]}{s.player.last_name[0]}</span>
+                  </div>
                 </div>
                 <div className="flex-1 min-w-0 pr-2">
                   <div className="flex items-center justify-between mb-1.5">
