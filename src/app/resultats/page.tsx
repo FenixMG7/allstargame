@@ -3,12 +3,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase, Player } from '@/lib/supabase';
 
+// Positions ajustées pour la vue perspective 3D du demi-terrain
 const COURT_POSITIONS = [
-  { top: '75%', left: '50%', label: 'Meneur' },
-  { top: '50%', left: '20%', label: 'Ailier G' },
-  { top: '50%', left: '80%', label: 'Ailier D' },
-  { top: '22%', left: '30%', label: 'Intérieur G' },
-  { top: '22%', left: '70%', label: 'Intérieur D' },
+  { top: '82%', left: '50%', label: 'Meneur' },
+  { top: '58%', left: '15%', label: 'Ailier G' },
+  { top: '58%', left: '85%', label: 'Ailier D' },
+  { top: '28%', left: '28%', label: 'Intérieur G' },
+  { top: '28%', left: '72%', label: 'Intérieur D' },
 ];
 
 interface PlayerScore {
@@ -17,53 +18,139 @@ interface PlayerScore {
   bonuses: number;
 }
 
-function StarFrame({ isBonus }: { isBonus: boolean }) {
-  const color = isBonus ? '#FFD700' : '#E8651A';
-  const glowColor = isBonus ? 'rgba(255, 215, 0, 0.6)' : 'rgba(232, 101, 26, 0.6)';
-  
+// Composant SVG du terrain de basket en perspective 3D avec effet néon
+function BasketballCourt3D() {
   return (
     <svg
-  className="absolute inset-0 w-full h-full"
-  viewBox="0 0 100 115"
-  preserveAspectRatio="none"
->
-  {/* Ligne de fond (baseline) */}
-  <line x1="0" y1="2" x2="100" y2="2" stroke="rgba(255,255,255,0.9)" strokeWidth="0.5"/>
+      className="absolute inset-0 w-full h-full"
+      viewBox="0 0 400 500"
+      preserveAspectRatio="xMidYMid slice"
+    >
+      <defs>
+        <filter id="glow-orange" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="3" result="blur"/>
+          <feMerge>
+            <feMergeNode in="blur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+        <filter id="glow-white" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="2" result="blur"/>
+          <feMerge>
+            <feMergeNode in="blur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+        <filter id="glow-strong" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="4" result="blur"/>
+          <feMerge>
+            <feMergeNode in="blur"/>
+            <feMergeNode in="blur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+        <linearGradient id="courtGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#0a0a0a"/>
+          <stop offset="50%" stopColor="#121212"/>
+          <stop offset="100%" stopColor="#1a1a1a"/>
+        </linearGradient>
+        <radialGradient id="rimGlow" cx="50%" cy="50%" r="80%">
+          <stop offset="0%" stopColor="#E8651A" stopOpacity="0.8"/>
+          <stop offset="100%" stopColor="#E8651A" stopOpacity="0"/>
+        </radialGradient>
+      </defs>
 
-  {/* Raquette (clé) */}
-  <rect x="35" y="2" width="30" height="28" fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth="0.5"/>
+      {/* Fond du terrain en perspective */}
+      <polygon 
+        points="40,500 360,500 320,80 80,80" 
+        fill="url(#courtGradient)"
+        stroke="rgba(232,101,26,0.3)"
+        strokeWidth="2"
+      />
+      
+      {/* Lignes extérieures */}
+      <g stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" fill="none" filter="url(#glow-white)">
+        <line x1="80" y1="80" x2="320" y2="80"/>
+        <line x1="40" y1="500" x2="80" y2="80"/>
+        <line x1="360" y1="500" x2="320" y2="80"/>
+        <line x1="40" y1="500" x2="360" y2="500"/>
+      </g>
 
-  {/* Ligne lancer franc */}
-  <line x1="35" y1="30" x2="65" y2="30" stroke="rgba(255,255,255,0.9)" strokeWidth="0.5"/>
+      {/* Raquette en perspective */}
+      <g stroke="rgba(232,101,26,0.7)" strokeWidth="2" fill="none" filter="url(#glow-orange)">
+        <polygon points="140,80 260,80 240,220 160,220"/>
+        <line x1="160" y1="220" x2="240" y2="220"/>
+      </g>
+      
+      {/* Cercle des lancers francs */}
+      <ellipse 
+        cx="200" cy="220" rx="40" ry="25"
+        stroke="rgba(232,101,26,0.6)" strokeWidth="1.5" fill="none"
+        filter="url(#glow-orange)"
+      />
+      <path 
+        d="M 160 220 A 40 25 0 0 1 240 220" 
+        stroke="rgba(255,255,255,0.3)" strokeWidth="1" strokeDasharray="8,6" fill="none"
+      />
 
-  {/* Cercle lancer franc (extérieur plein) */}
-  <path d="M 35 30 A 15 15 0 0 0 65 30" fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth="0.5"/>
+      {/* Ligne à 3 points */}
+      <g stroke="rgba(255,255,255,0.5)" strokeWidth="1.5" fill="none" filter="url(#glow-white)">
+        <line x1="100" y1="80" x2="75" y2="280"/>
+        <line x1="300" y1="80" x2="325" y2="280"/>
+        <path d="M 75 280 Q 200 400 325 280"/>
+      </g>
 
-  {/* Cercle lancer franc (intérieur pointillé) */}
-  <path d="M 35 30 A 15 15 0 0 1 65 30" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="0.5" strokeDasharray="1.5,1.5"/>
+      {/* Zone restrictive */}
+      <path d="M 170 130 Q 200 155 230 130" stroke="rgba(255,255,255,0.3)" strokeWidth="1" fill="none"/>
 
-  {/* Panneau */}
-  <line x1="45" y1="6" x2="55" y2="6" stroke="rgba(255,255,255,0.9)" strokeWidth="0.7"/>
+      {/* Panneau */}
+      <line x1="175" y1="95" x2="225" y2="95" stroke="rgba(255,255,255,0.8)" strokeWidth="3" filter="url(#glow-white)"/>
+      <line x1="200" y1="95" x2="200" y2="110" stroke="rgba(255,255,255,0.5)" strokeWidth="1.5"/>
 
-  {/* Cercle panier */}
-  <circle cx="50" cy="9" r="1.8" fill="none" stroke="#E8651A" strokeWidth="0.7"/>
+      {/* Cerceau avec glow orange */}
+      <circle cx="200" cy="115" r="12" fill="url(#rimGlow)"/>
+      <circle cx="200" cy="115" r="12" stroke="#E8651A" strokeWidth="3" fill="none" filter="url(#glow-strong)"/>
+      
+      {/* Filet */}
+      <g stroke="rgba(255,255,255,0.2)" strokeWidth="0.5">
+        <line x1="192" y1="127" x2="195" y2="145"/>
+        <line x1="200" y1="127" x2="200" y2="148"/>
+        <line x1="208" y1="127" x2="205" y2="145"/>
+      </g>
 
-  {/* Zone restrictive (no-charge semi-circle) */}
-  <path d="M 44 12 A 6 6 0 0 0 56 12" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="0.4"/>
+      {/* Cercle central */}
+      <path d="M 130 500 A 70 40 0 0 1 270 500" stroke="rgba(232,101,26,0.5)" strokeWidth="2" fill="none" filter="url(#glow-orange)"/>
+      <circle cx="200" cy="500" r="4" fill="#E8651A" filter="url(#glow-orange)"/>
 
-  {/* Ligne 3 points (coins) */}
-  <line x1="10" y1="2" x2="10" y2="32" stroke="rgba(255,255,255,0.9)" strokeWidth="0.5"/>
-  <line x1="90" y1="2" x2="90" y2="32" stroke="rgba(255,255,255,0.9)" strokeWidth="0.5"/>
+      {/* Marqueurs raquette */}
+      <g stroke="rgba(255,255,255,0.4)" strokeWidth="1">
+        <line x1="145" y1="140" x2="155" y2="140"/>
+        <line x1="145" y1="165" x2="155" y2="165"/>
+        <line x1="145" y1="190" x2="155" y2="190"/>
+        <line x1="245" y1="140" x2="255" y2="140"/>
+        <line x1="245" y1="165" x2="255" y2="165"/>
+        <line x1="245" y1="190" x2="255" y2="190"/>
+      </g>
+    </svg>
+  );
+}
 
-  {/* Arc 3 points (corrigé et centré sur le panier) */}
-  <path d="M 10 32 A 40 40 0 0 0 90 32" fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth="0.5"/>
-
-  {/* Ligne médiane */}
-  <line x1="0" y1="113" x2="100" y2="113" stroke="rgba(255,255,255,0.9)" strokeWidth="0.5"/>
-
-  {/* Cercle central (demi visible) */}
-  <circle cx="50" cy="113" r="15" fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth="0.5"/>
-</svg>
+function StarFrame({ isBonus }: { isBonus: boolean }) {
+  const color = isBonus ? '#FFD700' : '#E8651A';
+  return (
+    <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100">
+      <defs>
+        <filter id={`star-glow-${isBonus ? 'gold' : 'orange'}`} x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="2" result="blur"/>
+          <feMerge>
+            <feMergeNode in="blur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+      </defs>
+      <circle cx="50" cy="50" r="45" fill="none" stroke={color} strokeWidth="3"
+        filter={`url(#star-glow-${isBonus ? 'gold' : 'orange'})`} opacity="0.8"/>
+    </svg>
   );
 }
 
@@ -103,10 +190,7 @@ function CourtPlayer({ player, position, isBonus, rank, votes, animDelay }: Cour
       {isBonus && (
         <div
           className="absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-extrabold text-black px-2 py-0.5 rounded-full z-30 tracking-wide"
-          style={{ 
-            background: 'linear-gradient(90deg, #FFDF00, #D4AF37)', 
-            boxShadow: '0 0 15px rgba(255,215,0,0.9)' 
-          }}
+          style={{ background: 'linear-gradient(90deg, #FFDF00, #D4AF37)', boxShadow: '0 0 15px rgba(255,215,0,0.9)' }}
         >
           ⭐ BONUS
         </div>
@@ -114,71 +198,33 @@ function CourtPlayer({ player, position, isBonus, rank, votes, animDelay }: Cour
 
       <div className="relative" style={{ width: 66, height: 66 }}>
         <StarFrame isBonus={isBonus} />
-        
-        {/* Conteneur photo avec bordure noire profonde */}
         <div
           className="absolute rounded-full overflow-hidden border-2 border-[#0A0A0A]"
-          style={{ 
-            zIndex: 2, top: 6, left: 6, right: 6, bottom: 6,
-            boxShadow: 'inset 0 0 10px rgba(0,0,0,0.8), 0 5px 15px rgba(0,0,0,0.6)'
-          }}
+          style={{ zIndex: 2, top: 6, left: 6, right: 6, bottom: 6, boxShadow: 'inset 0 0 10px rgba(0,0,0,0.8), 0 5px 15px rgba(0,0,0,0.6)' }}
         >
           {player.photo_url ? (
-            <img
-              src={player.photo_url}
-              alt={player.last_name}
-              className="w-full h-full object-cover object-top filter contrast-110 saturate-110"
-            />
+            <img src={player.photo_url} alt={player.last_name} className="w-full h-full object-cover object-top filter contrast-110 saturate-110"/>
           ) : (
             <div className="w-full h-full bg-[#1A1A1A] flex items-center justify-center">
-              <span
-                style={{ fontFamily: 'Bebas Neue,sans-serif', color: '#E8651A' }}
-                className="text-lg"
-              >
+              <span style={{ fontFamily: 'Bebas Neue,sans-serif', color: '#E8651A' }} className="text-lg">
                 {player.first_name[0]}{player.last_name[0]}
               </span>
             </div>
           )}
         </div>
-
-        {/* Badge de classement */}
         <div
           className="absolute -bottom-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center border-[2.5px] border-[#0A0A0A]"
-          style={{ 
-            background: badgeBg, 
-            zIndex: 3,
-            boxShadow: `0 0 10px ${badgeBg}80`
-          }}
+          style={{ background: badgeBg, zIndex: 3, boxShadow: `0 0 10px ${badgeBg}80` }}
         >
-          <span
-            style={{ fontFamily: 'Bebas Neue,sans-serif', color: badgeColor, fontSize: 12, paddingTop: '1px' }}
-          >
-            {rank}
-          </span>
+          <span style={{ fontFamily: 'Bebas Neue,sans-serif', color: badgeColor, fontSize: 12, paddingTop: '1px' }}>{rank}</span>
         </div>
       </div>
 
       <div className="text-center mt-3 bg-[#0A0A0A]/60 px-3 py-1 rounded-lg backdrop-blur-sm border border-white/5">
-        <p
-          style={{
-            fontFamily: 'Bebas Neue,sans-serif',
-            color: nameColor,
-            textShadow: '0 2px 4px rgba(0,0,0,1)',
-            fontSize: 13,
-            letterSpacing: '0.5px'
-          }}
-          className="leading-none"
-        >
+        <p style={{ fontFamily: 'Bebas Neue,sans-serif', color: nameColor, textShadow: '0 2px 4px rgba(0,0,0,1)', fontSize: 13, letterSpacing: '0.5px' }} className="leading-none">
           {player.last_name.toUpperCase()}
         </p>
-        <p
-          style={{
-            fontSize: 10,
-            color: 'rgba(255,255,255,0.7)',
-            fontWeight: 500,
-            marginTop: '2px'
-          }}
-        >
+        <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)', fontWeight: 500, marginTop: '2px' }}>
           {votes} <span className="text-white/40">votes</span>
         </p>
       </div>
@@ -197,9 +243,7 @@ export default function ResultatsPage() {
   const fetchResults = useCallback(async () => {
     const { data: players } = await supabase.from('players').select('*').eq('is_active', true);
     if (!players) return;
-    const { data: votes } = await supabase
-      .from('votes')
-      .select('player_1_id,player_2_id,player_3_id,player_4_id,player_5_id,bonus_player_id');
+    const { data: votes } = await supabase.from('votes').select('player_1_id,player_2_id,player_3_id,player_4_id,player_5_id,bonus_player_id');
     if (!votes) return;
 
     const voteCount: Record<string, number> = {};
@@ -235,9 +279,7 @@ export default function ResultatsPage() {
   }, [fetchResults]);
 
   const maxVotes = allScores[0]?.votes || 1;
-  const bonusLeader = top5.length > 0
-    ? top5.reduce((a, b) => a.bonuses > b.bonuses ? a : b)
-    : null;
+  const bonusLeader = top5.length > 0 ? top5.reduce((a, b) => a.bonuses > b.bonuses ? a : b) : null;
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-[#050505]">
@@ -248,29 +290,14 @@ export default function ResultatsPage() {
   return (
     <main className="min-h-screen pb-16 px-4 py-8 bg-[#050505]">
       <style>{`
-        @keyframes pulse-gold {
-          0%, 100% { opacity: 1; filter: drop-shadow(0 0 10px rgba(255,215,0,0.8)); transform: scale(1); }
-          50% { opacity: 0.85; filter: drop-shadow(0 0 20px rgba(255,215,0,1)); transform: scale(1.02); }
-        }
-        @keyframes pulse-orange {
-          0%, 100% { opacity: 1; filter: drop-shadow(0 0 8px rgba(232,101,26,0.6)); transform: scale(1); }
-          50% { opacity: 0.85; filter: drop-shadow(0 0 15px rgba(232,101,26,0.9)); transform: scale(1.02); }
-        }
-        .spinner {
-          border-radius: 50%;
-          animation: spin 1s linear infinite;
-        }
+        .spinner { border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
       `}</style>
 
       <div className="max-w-lg mx-auto flex flex-col gap-6">
-
-        {/* Header */}
         <div className="flex flex-col items-center gap-2 text-center">
           <img src="/logo.png" alt="CSL" className="w-16 h-16 object-contain animate-float" />
-          <h1 style={{ fontFamily: 'Bebas Neue,sans-serif' }} className="text-5xl text-white tracking-wide drop-shadow-lg">
-            RÉSULTATS
-          </h1>
+          <h1 style={{ fontFamily: 'Bebas Neue,sans-serif' }} className="text-5xl text-white tracking-wide drop-shadow-lg">RÉSULTATS</h1>
           <p className="text-white/50 text-sm tracking-wider uppercase font-semibold">All-Star Game · CSL Basket</p>
           <div className="flex items-center gap-2 mt-2 bg-white/5 px-3 py-1 rounded-full border border-white/10">
             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.8)]" />
@@ -278,12 +305,8 @@ export default function ResultatsPage() {
           </div>
         </div>
 
-        {/* Toggle */}
         <div className="flex bg-[#111] rounded-xl p-1.5 border border-white/5 shadow-inner">
-          {[
-            { id: 'terrain', label: '🏀 Terrain' },
-            { id: 'classement', label: '📊 Classement' },
-          ].map(v => (
+          {[{ id: 'terrain', label: '🏀 Terrain' }, { id: 'classement', label: '📊 Classement' }].map(v => (
             <button
               key={v.id}
               onClick={() => setView(v.id as 'terrain' | 'classement')}
@@ -299,12 +322,9 @@ export default function ResultatsPage() {
           ))}
         </div>
 
-        {/* Vue terrain */}
         {view === 'terrain' && (
           <div className="flex flex-col gap-4">
-            <p className="text-center text-[#E8651A] font-bold text-xs uppercase tracking-[0.2em]">
-              Le 5 Majeur
-            </p>
+            <p className="text-center text-[#E8651A] font-bold text-xs uppercase tracking-[0.2em]">Le 5 Majeur</p>
             {top5.length < 5 ? (
               <div className="text-center py-16 text-white/40 bg-[#0A0A0A] rounded-2xl border border-white/5">
                 <p className="text-5xl mb-4 opacity-50">🗳️</p>
@@ -316,63 +336,17 @@ export default function ResultatsPage() {
                 key={animKey}
                 className="relative w-full rounded-2xl overflow-hidden"
                 style={{
-                  paddingBottom: '115%',
-                  /* Effet Spotlight sur le terrain sombre */
-                  background: 'radial-gradient(circle at 50% 40%, #1a1a1a 0%, #050505 80%)',
-                  border: '1px solid rgba(255,255,255,0.05)',
-                  boxShadow: '0 20px 50px -10px rgba(0,0,0,0.8), inset 0 0 0 1px rgba(255,255,255,0.02)',
+                  paddingBottom: '125%',
+                  background: 'linear-gradient(180deg, #050505 0%, #0a0a0a 50%, #121212 100%)',
+                  border: '1px solid rgba(232,101,26,0.2)',
+                  boxShadow: '0 0 60px rgba(232,101,26,0.15), 0 20px 50px -10px rgba(0,0,0,0.9), inset 0 0 100px rgba(232,101,26,0.05)',
                 }}
               >
                 <div className="absolute inset-0">
-                  {/* Lignes du terrain refondues (Premium / Minimaliste) */}
-                  <svg
-                    className="absolute inset-0 w-full h-full"
-                    viewBox="0 0 100 115"
-                    preserveAspectRatio="none"
-                  >
-                    <g stroke="rgba(255,255,255,0.15)" strokeWidth="0.4" fill="none">
-                      {/* Bordure extérieure */}
-                      <rect x="2" y="2" width="96" height="111" rx="1" />
-                      
-                      {/* Raquette extérieure */}
-                      <rect x="32" y="2" width="36" height="28" />
-                      {/* Raquette intérieure (Peinture) */}
-                      <rect x="38" y="2" width="24" height="28" fill="rgba(255,255,255,0.02)" />
-                      
-                      {/* Ligne des lancers francs */}
-                      <line x1="32" y1="30" x2="68" y2="30" strokeWidth="0.6" />
-                      
-                      {/* Cercles lancer franc */}
-                      <path d="M 38 30 A 12 12 0 0 1 62 30" strokeDasharray="1.5,1.5" />
-                      <path d="M 38 30 A 12 12 0 0 0 62 30" />
-                      
-                      {/* Panier et Planche */}
-                      <line x1="44" y1="5" x2="56" y2="5" stroke="rgba(255,255,255,0.4)" strokeWidth="0.8"/>
-                      <line x1="49" y1="5" x2="49" y2="7.5" stroke="rgba(255,255,255,0.4)" strokeWidth="0.5"/>
-                      <circle cx="50" cy="9" r="2.5" stroke="#E8651A" strokeWidth="0.6" fill="rgba(232,101,26,0.1)"/>
-
-                      {/* Ligne 3 points */}
-                      {/* Coins */}
-                      <line x1="6" y1="2" x2="6" y2="32" />
-                      <line x1="94" y1="2" x2="94" y2="32" />
-                      {/* Arc 3 points */}
-                      <path d="M 6 32 A 44 44 0 0 0 94 32" strokeWidth="0.5" />
-                      
-                      {/* Rond central bas (milieu de terrain) */}
-                      <circle cx="50" cy="113" r="15" />
-                      <line x1="2" y1="113" x2="98" y2="113" strokeWidth="0.6" />
-                    </g>
-                  </svg>
-
-                  {/* Filigrane central ultra discret */}
-                  <div
-                    className="absolute"
-                    style={{ top: '50%', left: '50%', transform: 'translate(-50%,-50%)', opacity: 0.03, zIndex: 1 }}
-                  >
-                    <img src="/logo.png" alt="" className="w-32 h-32 object-contain grayscale" />
+                  <BasketballCourt3D />
+                  <div className="absolute" style={{ top: '45%', left: '50%', transform: 'translate(-50%,-50%)', opacity: 0.05, zIndex: 1 }}>
+                    <img src="/logo.png" alt="" className="w-28 h-28 object-contain grayscale" />
                   </div>
-
-                  {/* Joueurs animés */}
                   {top5.map((s, i) => (
                     <CourtPlayer
                       key={`${s.player.id}-${animKey}`}
@@ -381,7 +355,7 @@ export default function ResultatsPage() {
                       isBonus={bonusLeader?.player.id === s.player.id}
                       rank={i + 1}
                       votes={s.votes}
-                      animDelay={i * 200} // Animation légèrement plus rapide
+                      animDelay={i * 200}
                     />
                   ))}
                 </div>
@@ -390,7 +364,6 @@ export default function ResultatsPage() {
           </div>
         )}
 
-        {/* Vue classement */}
         {view === 'classement' && (
           <div className="flex flex-col gap-3">
             {allScores.map((s, i) => (
@@ -403,54 +376,31 @@ export default function ResultatsPage() {
                 }}
               >
                 <div className="w-8 text-center flex-shrink-0 drop-shadow-md">
-                  {i < 3 ? (
-                    <span className="text-2xl">{['🥇','🥈','🥉'][i]}</span>
-                  ) : (
-                    <span
-                      style={{ fontFamily: 'Bebas Neue,sans-serif', color: i < 5 ? '#E8651A' : 'rgba(255,255,255,0.2)' }}
-                      className="text-2xl"
-                    >
-                      {i + 1}
-                    </span>
+                  {i < 3 ? <span className="text-2xl">{['🥇','🥈','🥉'][i]}</span> : (
+                    <span style={{ fontFamily: 'Bebas Neue,sans-serif', color: i < 5 ? '#E8651A' : 'rgba(255,255,255,0.2)' }} className="text-2xl">{i + 1}</span>
                   )}
                 </div>
-                
-                <div
-                  className="w-11 h-11 rounded-full overflow-hidden bg-[#1E1E1E] flex-shrink-0 flex items-center justify-center border-2"
-                  style={{ borderColor: i < 5 ? '#E8651A' : '#333' }}
-                >
+                <div className="w-11 h-11 rounded-full overflow-hidden bg-[#1E1E1E] flex-shrink-0 flex items-center justify-center border-2" style={{ borderColor: i < 5 ? '#E8651A' : '#333' }}>
                   {s.player.photo_url ? (
                     <img src={s.player.photo_url} alt={s.player.last_name} className="w-full h-full object-cover" />
                   ) : (
-                    <span style={{ fontFamily: 'Bebas Neue,sans-serif', color: 'rgba(232,101,26,0.5)' }} className="text-lg">
-                      {s.player.first_name[0]}
-                    </span>
+                    <span style={{ fontFamily: 'Bebas Neue,sans-serif', color: 'rgba(232,101,26,0.5)' }} className="text-lg">{s.player.first_name[0]}</span>
                   )}
                 </div>
-                
                 <div className="flex-1 min-w-0 pr-2">
                   <div className="flex items-center justify-between mb-1.5">
-                    <span
-                      className="font-bold text-sm truncate tracking-wide"
-                      style={{ color: i < 5 ? 'white' : 'rgba(255,255,255,0.5)' }}
-                    >
+                    <span className="font-bold text-sm truncate tracking-wide" style={{ color: i < 5 ? 'white' : 'rgba(255,255,255,0.5)' }}>
                       {s.player.first_name} {s.player.last_name.toUpperCase()}
                     </span>
                     <div className="flex items-center gap-2 ml-2 flex-shrink-0">
                       {s.bonuses > 0 && <span className="text-xs text-[#FFD700] drop-shadow-md">⭐×{s.bonuses}</span>}
-                      <span style={{ fontFamily: 'Bebas Neue,sans-serif' }} className="text-xl text-[#E8651A]">
-                        {s.votes}
-                      </span>
+                      <span style={{ fontFamily: 'Bebas Neue,sans-serif' }} className="text-xl text-[#E8651A]">{s.votes}</span>
                     </div>
                   </div>
-                  
                   <div className="h-1.5 bg-black/50 rounded-full overflow-hidden border border-white/5">
                     <div
                       className="h-full rounded-full transition-all duration-1000 ease-out relative"
-                      style={{ 
-                        width: `${(s.votes / maxVotes) * 100}%`, 
-                        background: i < 5 ? 'linear-gradient(90deg, #A04000, #E8651A)' : '#333' 
-                      }}
+                      style={{ width: `${(s.votes / maxVotes) * 100}%`, background: i < 5 ? 'linear-gradient(90deg, #A04000, #E8651A)' : '#333' }}
                     >
                       {i < 5 && <div className="absolute inset-0 bg-white/20 w-1/2 blur-sm" />}
                     </div>
@@ -460,7 +410,6 @@ export default function ResultatsPage() {
             ))}
           </div>
         )}
-
       </div>
     </main>
   );
