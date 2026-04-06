@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -35,7 +34,8 @@ function BasketballCourt2D() {
       <path d="M 31 27 A 19 19 0 0 0 69 27" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="0.6"/>
       <path d="M 31 27 A 19 19 0 0 1 69 27" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="0.5" strokeDasharray="2,2"/>
       <line x1="44" y1="7" x2="56" y2="7" stroke="rgba(255,255,255,0.7)" strokeWidth="0.8"/>
-      <line x1="50" y1="7" x2="50" y2="10" stroke="rgba(255,255,255,0.4)" strokeWidth="0.4"/>
+      {/* MODIFICATION 2 : Support panier centré */}
+      <line x1="50" y1="7" x2="50" y2="11" stroke="rgba(255,255,255,0.4)" strokeWidth="0.5"/>
       <circle cx="50" cy="11" r="2.5" fill="none" stroke="#E8651A" strokeWidth="0.8"/>
       <path d="M 44 14 A 6 6 0 0 0 56 14" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="0.4"/>
       <line x1="5" y1="3" x2="5" y2="35" stroke="rgba(255,255,255,0.5)" strokeWidth="0.6"/>
@@ -52,7 +52,8 @@ function StarFrame({ isBonus }: { isBonus: boolean }) {
   const filterId = isBonus ? 'glow-merci-gold' : 'glow-merci-orange';
   
   return (
-    <svg viewBox="0 0 110 110" width="80" height="80" className="absolute inset-0 -m-2" style={{ zIndex: 1 }}>
+    /* MODIFICATION 1 : Étoile plus grande (width/height 90, -m-3) */
+    <svg viewBox="0 0 110 110" width="90" height="90" className="absolute inset-0 -m-3" style={{ zIndex: 1 }}>
       <defs>
         <filter id={filterId} x="-50%" y="-50%" width="200%" height="200%">
           <feGaussianBlur stdDeviation="2.5" result="coloredBlur" />
@@ -111,15 +112,15 @@ function CourtPlayer({ player, position, isBonus, index }: {
       <div className="relative" style={{ width: 64, height: 64 }}>
         <StarFrame isBonus={isBonus} />
         <div className="absolute rounded-full overflow-hidden" style={{ zIndex: 2, top: 6, left: 6, right: 6, bottom: 6 }}>
-          {player.photo_url ? (
-            <img src={player.photo_url} alt={player.last_name} className="w-full h-full object-cover object-top" />
-          ) : (
-            <div className="w-full h-full bg-[#1A1A1A] flex items-center justify-center">
-              <span style={{ fontFamily: 'Bebas Neue,sans-serif', color: '#E8651A' }} className="text-base">
-                {player.first_name[0]}{player.last_name[0]}
-              </span>
-            </div>
-          )}
+          {/* MODIFICATION 3 : Initiales avec ou sans photo */}
+          <div className="w-full h-full bg-[#1A1A1A] flex items-center justify-center">
+            {player.photo_url ? (
+              <img src={player.photo_url} alt={player.last_name} className="w-full h-full object-cover object-top" />
+            ) : null}
+            <span className="absolute" style={{ fontFamily: 'Bebas Neue,sans-serif', color: 'white', fontSize: 14, textShadow: '0 2px 4px rgba(0,0,0,0.9)' }}>
+              {player.first_name[0]}{player.last_name[0]}
+            </span>
+          </div>
         </div>
         <div
           className="absolute w-5 h-5 rounded-full flex items-center justify-center"
@@ -167,7 +168,7 @@ export default function MerciPage() {
       setTimeout(() => confetti({ particleCount: 60, angle: 60, spread: 55, origin: { x: 0 }, colors }), 300);
       setTimeout(() => confetti({ particleCount: 60, angle: 120, spread: 55, origin: { x: 1 }, colors }), 500);
     } catch {
-      // Confetti not available
+      // Confetti non disponible
     }
   }
 
