@@ -2,7 +2,21 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { supabase, Player } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
+
+interface Player {
+  id: string;
+  first_name: string;
+  last_name: string;
+  photo_url?: string;
+  is_active?: boolean;
+}
+
+interface PlayerScore {
+  player: Player;
+  votes: number;
+  bonuses: number;
+}
 
 const COURT_POSITIONS = [
   { top: '82%', left: '50%', label: 'Meneur' },
@@ -11,12 +25,6 @@ const COURT_POSITIONS = [
   { top: '28%', left: '28%', label: 'Intérieur G' },
   { top: '28%', left: '72%', label: 'Intérieur D' },
 ];
-
-interface PlayerScore {
-  player: Player;
-  votes: number;
-  bonuses: number;
-}
 
 function BasketballCourt3D() {
   return (
@@ -88,22 +96,23 @@ function BasketballCourt3D() {
 
 function StarFrame({ isBonus }: { isBonus: boolean }) {
   const color = isBonus ? '#FFD700' : '#E8651A';
+  const filterId = isBonus ? 'star-glow-gold' : 'star-glow-orange';
   return (
     <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100">
       <defs>
-        <filter id={`star-glow-${isBonus ? 'gold' : 'orange'}`} x="-50%" y="-50%" width="200%" height="200%">
+        <filter id={filterId} x="-50%" y="-50%" width="200%" height="200%">
           <feGaussianBlur stdDeviation="2" result="blur"/>
           <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
       </defs>
-      <circle cx="50" cy="50" r="45" fill="none" stroke={color} strokeWidth="3" filter={`url(#star-glow-${isBonus ? 'gold' : 'orange'})`} opacity="0.8"/>
+      <circle cx="50" cy="50" r="45" fill="none" stroke={color} strokeWidth="3" filter={`url(#${filterId})`} opacity="0.8"/>
     </svg>
   );
 }
 
 interface CourtPlayerProps {
   player: Player;
-  position: typeof COURT_POSITIONS[0];
+  position: { top: string; left: string; label: string };
   isBonus: boolean;
   rank: number;
   votes: number;
@@ -149,7 +158,7 @@ function CourtPlayer({ player, position, isBonus, rank, votes, animDelay }: Cour
           style={{ zIndex: 2, top: 6, left: 6, right: 6, bottom: 6, boxShadow: 'inset 0 0 10px rgba(0,0,0,0.8), 0 5px 15px rgba(0,0,0,0.6)' }}
         >
           {player.photo_url ? (
-            <img src={player.photo_url} alt={player.last_name} className="w-full h-full object-cover object-top filter contrast-110 saturate-110"/>
+            <img src={player.photo_url} alt={player.last_name} className="w-full h-full object-cover object-top" style={{ filter: 'contrast(1.1) saturate(1.1)' }}/>
           ) : (
             <div className="w-full h-full bg-[#1A1A1A] flex items-center justify-center">
               <span style={{ fontFamily: 'Bebas Neue,sans-serif', color: '#E8651A' }} className="text-lg">{player.first_name[0]}{player.last_name[0]}</span>
@@ -157,8 +166,8 @@ function CourtPlayer({ player, position, isBonus, rank, votes, animDelay }: Cour
           )}
         </div>
         <div
-          className="absolute -bottom-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center border-[2.5px] border-[#0A0A0A]"
-          style={{ background: badgeBg, zIndex: 3, boxShadow: `0 0 10px ${badgeBg}80` }}
+          className="absolute -bottom-2 -right-2 w-6 h-6 rounded-full flex items-center justify-center"
+          style={{ background: badgeBg, zIndex: 3, boxShadow: `0 0 10px ${badgeBg}80`, border: '2.5px solid #0A0A0A' }}
         >
           <span style={{ fontFamily: 'Bebas Neue,sans-serif', color: badgeColor, fontSize: 12, paddingTop: '1px' }}>{rank}</span>
         </div>
@@ -187,8 +196,8 @@ export default function ResultatsPage() {
 
     const voteCount: Record<string, number> = {};
     const bonusCount: Record<string, number> = {};
-    players.forEach(p => { voteCount[p.id] = 0; bonusCount[p.id] = 0; });
-    votes.forEach(v => {
+    players.forEach((p: Player) => { voteCount[p.id] = 0; bonusCount[p.id] = 0; });
+    votes.forEach((v: Record<string, string | null>) => {
       [v.player_1_id, v.player_2_id, v.player_3_id, v.player_4_id, v.player_5_id].forEach(id => {
         if (id && voteCount[id] !== undefined) voteCount[id]++;
       });
@@ -196,8 +205,8 @@ export default function ResultatsPage() {
     });
 
     const scored = players
-      .map(p => ({ player: p, votes: voteCount[p.id] || 0, bonuses: bonusCount[p.id] || 0 }))
-      .sort((a, b) => b.votes - a.votes || b.bonuses - a.bonuses);
+      .map((p: Player) => ({ player: p, votes: voteCount[p.id] || 0, bonuses: bonusCount[p.id] || 0 }))
+      .sort((a: PlayerScore, b: PlayerScore) => b.votes - a.votes || b.bonuses - a.bonuses);
 
     setTop5(scored.slice(0, 5));
     setAllScores(scored);
@@ -222,29 +231,25 @@ export default function ResultatsPage() {
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-[#050505]">
-      <div className="spinner" style={{ width: 40, height: 40, borderWidth: 3, borderColor: '#E8651A', borderTopColor: 'transparent' }} />
+      <div style={{ width: 40, height: 40, borderWidth: 3, borderStyle: 'solid', borderColor: '#E8651A', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+      <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
     </div>
   );
 
   return (
     <main className="min-h-screen pb-16 px-4 py-8 bg-[#050505]">
-      <style>{`
-        .spinner { border-radius: 50%; border-style: solid; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-      `}</style>
-
       <div className="max-w-lg mx-auto flex flex-col gap-6">
         <div className="flex flex-col items-center gap-2 text-center">
-          <img src="/logo.png" alt="CSL" className="w-16 h-16 object-contain animate-float" />
+          <img src="/logo.png" alt="CSL" className="w-16 h-16 object-contain" style={{ animation: 'float 6s ease-in-out infinite' }} />
           <h1 style={{ fontFamily: 'Bebas Neue,sans-serif' }} className="text-5xl text-white tracking-wide drop-shadow-lg">RÉSULTATS</h1>
           <p className="text-white/50 text-sm tracking-wider uppercase font-semibold">All-Star Game · CSL Basket</p>
           <div className="flex items-center gap-2 mt-2 bg-white/5 px-3 py-1 rounded-full border border-white/10">
-            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.8)]" />
+            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" style={{ boxShadow: '0 0 8px rgba(34,197,94,0.8)' }} />
             <span className="text-xs text-white/60 font-medium">{totalVotes} votes exprimés · Live</span>
           </div>
         </div>
 
-        <div className="flex bg-[#111] rounded-xl p-1.5 border border-white/5 shadow-inner">
+        <div className="flex bg-[#111] rounded-xl p-1.5 border border-white/5" style={{ boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.3)' }}>
           {[{ id: 'terrain', label: '🏀 Terrain' }, { id: 'classement', label: '📊 Classement' }].map(v => (
             <button
               key={v.id}
@@ -319,7 +324,7 @@ export default function ResultatsPage() {
                     <span style={{ fontFamily: 'Bebas Neue,sans-serif', color: i < 5 ? '#E8651A' : 'rgba(255,255,255,0.2)' }} className="text-2xl">{i + 1}</span>
                   )}
                 </div>
-                <div className="w-11 h-11 rounded-full overflow-hidden bg-[#1E1E1E] flex-shrink-0 flex items-center justify-center border-2" style={{ borderColor: i < 5 ? '#E8651A' : '#333' }}>
+                <div className="w-11 h-11 rounded-full overflow-hidden bg-[#1E1E1E] flex-shrink-0 flex items-center justify-center" style={{ border: `2px solid ${i < 5 ? '#E8651A' : '#333'}` }}>
                   {s.player.photo_url ? (
                     <img src={s.player.photo_url} alt={s.player.last_name} className="w-full h-full object-cover" />
                   ) : (
@@ -350,7 +355,7 @@ export default function ResultatsPage() {
           </div>
         )}
       </div>
+      <style>{`@keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-12px); } }`}</style>
     </main>
   );
 }
-```
