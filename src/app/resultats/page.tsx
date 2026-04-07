@@ -16,7 +16,6 @@ interface Coach {
   first_name: string;
   last_name: string;
   photo_url?: string;
-  is_active?: boolean;
 }
 
 interface PlayerScore {
@@ -86,6 +85,7 @@ function BasketballCourt3D() {
       </g>
       <path d="M 170 130 Q 200 155 230 130" stroke="rgba(255,255,255,0.3)" strokeWidth="1" fill="none"/>
       <line x1="175" y1="95" x2="225" y2="95" stroke="rgba(255,255,255,0.8)" strokeWidth="3" filter="url(#glow-white)"/>
+      {/* MODIFICATION 2 : Support panier centré */}
       <line x1="200" y1="95" x2="200" y2="115" stroke="rgba(255,255,255,0.5)" strokeWidth="1.5"/>
       <circle cx="200" cy="115" r="12" fill="url(#rimGlow)"/>
       <circle cx="200" cy="115" r="12" stroke="#E8651A" strokeWidth="3" fill="none" filter="url(#glow-strong)"/>
@@ -112,6 +112,7 @@ function StarFrame({ isBonus }: { isBonus: boolean }) {
   const color = isBonus ? '#FFD700' : '#E8651A';
   const filterId = isBonus ? 'star-glow-gold' : 'star-glow-orange';
   return (
+    /* MODIFICATION 1 : Étoile plus grande via les dimensions et marges */
     <svg viewBox="0 0 110 110" width="92" height="92" className="absolute inset-0 -m-3.5" style={{ zIndex: 1 }}>
       <defs>
         <filter id={filterId} x="-50%" y="-50%" width="200%" height="200%">
@@ -121,7 +122,9 @@ function StarFrame({ isBonus }: { isBonus: boolean }) {
       </defs>
       <polygon
         points="55,4 67,38 103,38 75,59 86,94 55,73 24,94 35,59 7,38 43,38"
-        fill="none" stroke={color} strokeWidth="3.5"
+        fill="none"
+        stroke={color}
+        strokeWidth="3.5"
         filter={`url(#${filterId})`}
       />
     </svg>
@@ -139,6 +142,7 @@ interface CourtPlayerProps {
 
 function CourtPlayer({ player, position, isBonus, rank, votes, animDelay }: CourtPlayerProps) {
   const [visible, setVisible] = useState(false);
+
   useEffect(() => {
     const t = setTimeout(() => setVisible(true), animDelay);
     return () => clearTimeout(t);
@@ -152,7 +156,9 @@ function CourtPlayer({ player, position, isBonus, rank, votes, animDelay }: Cour
     <div
       className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center group"
       style={{
-        top: position.top, left: position.left, zIndex: 10,
+        top: position.top,
+        left: position.left,
+        zIndex: 10,
         opacity: visible ? 1 : 0,
         transform: `translate(-50%, -50%) scale(${visible ? 1 : 0.3})`,
         transition: `opacity 0.5s ease ${animDelay}ms, transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) ${animDelay}ms`,
@@ -172,6 +178,7 @@ function CourtPlayer({ player, position, isBonus, rank, votes, animDelay }: Cour
           className="absolute rounded-full overflow-hidden border-2 border-[#0A0A0A]"
           style={{ zIndex: 2, top: 6, left: 6, right: 6, bottom: 6, boxShadow: 'inset 0 0 10px rgba(0,0,0,0.8), 0 5px 15px rgba(0,0,0,0.6)' }}
         >
+          {/* MODIFICATION 3 : Initiales toujours présentes en fond/overlay */}
           <div className="w-full h-full bg-[#1A1A1A] flex items-center justify-center">
             {player.photo_url ? (
               <img src={player.photo_url} alt={player.last_name} className="w-full h-full object-cover object-top" style={{ filter: 'contrast(1.1) saturate(1.1)' }}/>
@@ -191,56 +198,6 @@ function CourtPlayer({ player, position, isBonus, rank, votes, animDelay }: Cour
       <div className="text-center mt-3 bg-[#0A0A0A]/60 px-3 py-1 rounded-lg backdrop-blur-sm border border-white/5">
         <p style={{ fontFamily: 'Bebas Neue,sans-serif', color: nameColor, textShadow: '0 2px 4px rgba(0,0,0,1)', fontSize: 13, letterSpacing: '0.5px' }} className="leading-none">{player.last_name.toUpperCase()}</p>
         <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)', fontWeight: 500, marginTop: '2px' }}>{votes} <span className="text-white/40">votes</span></p>
-      </div>
-    </div>
-  );
-}
-
-// ── Carte coach sur le terrain ────────────────────────────────
-function CoachOnCourt({ coach, role, side, animDelay }: {
-  coach: Coach; role: string; side: 'left' | 'right'; animDelay: number;
-}) {
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    const t = setTimeout(() => setVisible(true), animDelay);
-    return () => clearTimeout(t);
-  }, [animDelay]);
-
-  const isLeft = side === 'left';
-
-  return (
-    <div
-      className="absolute flex flex-col items-center"
-      style={{
-        top: '88%',
-        left: isLeft ? '12%' : '88%',
-        transform: 'translate(-50%, -50%)',
-        zIndex: 10,
-        opacity: visible ? 1 : 0,
-        transition: `opacity 0.5s ease ${animDelay}ms, transform 0.5s ease ${animDelay}ms`,
-      }}
-    >
-      <div
-        className="absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap text-[9px] font-bold text-white px-1.5 py-0.5 rounded-full"
-        style={{ background: '#E8651A', boxShadow: '0 0 8px rgba(232,101,26,0.6)' }}
-      >
-        {role}
-      </div>
-      <div
-        className="w-12 h-12 rounded-full overflow-hidden border-2 bg-[#1A1A1A] flex items-center justify-center"
-        style={{ borderColor: '#E8651A', boxShadow: '0 0 12px rgba(232,101,26,0.5)' }}
-      >
-        {coach.photo_url
-          ? <img src={coach.photo_url} alt={coach.last_name} className="w-full h-full object-cover object-top" />
-          : <span style={{ fontFamily: 'Bebas Neue,sans-serif', color: '#E8651A', fontSize: 16 }}>
-              {coach.first_name[0]}{coach.last_name[0]}
-            </span>
-        }
-      </div>
-      <div className="text-center mt-1.5 bg-[#0A0A0A]/60 px-2 py-0.5 rounded backdrop-blur-sm border border-white/5">
-        <p style={{ fontFamily: 'Bebas Neue,sans-serif', color: 'white', fontSize: 11, textShadow: '0 2px 4px rgba(0,0,0,1)' }} className="leading-none">
-          {coach.last_name.toUpperCase()}
-        </p>
       </div>
     </div>
   );
@@ -296,7 +253,7 @@ export default function ResultatsPage() {
         if (v.head_coach_id && headCount[v.head_coach_id] !== undefined) headCount[v.head_coach_id]++;
         if (v.assistant_coach_id && asstCount[v.assistant_coach_id] !== undefined) asstCount[v.assistant_coach_id]++;
       });
-      const cs = coaches
+      const cs: CoachScore[] = coaches
         .map((c: Coach) => ({
           coach: c,
           headVotes: headCount[c.id] || 0,
@@ -323,16 +280,7 @@ export default function ResultatsPage() {
   }, [fetchResults]);
 
   const maxVotes = allScores[0]?.votes || 1;
-  const maxCoachTotal = coachScores[0]?.total || 1;
   const bonusLeader = top5.length > 0 ? top5.reduce((a, b) => a.bonuses > b.bonuses ? a : b) : null;
-  const topHeadCoach = coachScores[0]?.coach;
-  const topAsstCoach = coachScores[1]?.coach;
-
-  const tabs = [
-    { id: 'terrain', label: '🏀 Terrain' },
-    { id: 'classement', label: '📊 Joueurs' },
-    ...(coachScores.length > 0 ? [{ id: 'coachs', label: '🧑‍💼 Coachs' }] : []),
-  ];
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-[#050505]">
@@ -344,8 +292,6 @@ export default function ResultatsPage() {
   return (
     <main className="min-h-screen pb-16 px-4 py-8 bg-[#050505]">
       <div className="max-w-lg mx-auto flex flex-col gap-6">
-
-        {/* Header */}
         <div className="flex flex-col items-center gap-2 text-center">
           <img src="/logo.png" alt="CSL" className="w-16 h-16 object-contain" style={{ animation: 'float 6s ease-in-out infinite' }} />
           <h1 style={{ fontFamily: 'Bebas Neue,sans-serif' }} className="text-5xl text-white tracking-wide drop-shadow-lg">RÉSULTATS</h1>
@@ -356,9 +302,12 @@ export default function ResultatsPage() {
           </div>
         </div>
 
-        {/* Onglets */}
         <div className="flex bg-[#111] rounded-xl p-1.5 border border-white/5 gap-1" style={{ boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.3)' }}>
-          {tabs.map(v => (
+          {[
+            { id: 'terrain', label: '🏀 Terrain' },
+            { id: 'classement', label: '📊 Joueurs' },
+            ...(coachScores.length > 0 ? [{ id: 'coachs', label: '🧑‍💼 Coachs' }] : []),
+          ].map(v => (
             <button
               key={v.id}
               onClick={() => setView(v.id as 'terrain' | 'classement' | 'coachs')}
@@ -374,7 +323,6 @@ export default function ResultatsPage() {
           ))}
         </div>
 
-        {/* ── VUE TERRAIN ── */}
         {view === 'terrain' && (
           <div className="flex flex-col gap-4">
             <p className="text-center text-[#E8651A] font-bold text-xs uppercase tracking-[0.2em]">Le 5 Majeur</p>
@@ -400,7 +348,6 @@ export default function ResultatsPage() {
                   <div className="absolute" style={{ top: '45%', left: '50%', transform: 'translate(-50%,-50%)', opacity: 0.05, zIndex: 1 }}>
                     <img src="/logo.png" alt="" className="w-28 h-28 object-contain grayscale" />
                   </div>
-                  {/* Joueurs */}
                   {top5.map((s, i) => (
                     <CourtPlayer
                       key={`${s.player.id}-${animKey}`}
@@ -412,20 +359,12 @@ export default function ResultatsPage() {
                       animDelay={i * 200}
                     />
                   ))}
-                  {/* Coachs sur le terrain */}
-                  {topHeadCoach && (
-                    <CoachOnCourt coach={topHeadCoach} role="PRINCIPAL" side="left" animDelay={1200} />
-                  )}
-                  {topAsstCoach && (
-                    <CoachOnCourt coach={topAsstCoach} role="ADJOINT" side="right" animDelay={1400} />
-                  )}
                 </div>
               </div>
             )}
           </div>
         )}
 
-        {/* ── VUE CLASSEMENT JOUEURS ── */}
         {view === 'classement' && (
           <div className="flex flex-col gap-3">
             {allScores.map((s, i) => (
@@ -473,13 +412,12 @@ export default function ResultatsPage() {
             ))}
           </div>
         )}
-
         {/* ── VUE COACHS ── */}
         {view === 'coachs' && (
           <div className="flex flex-col gap-4">
-            {/* Top 2 mis en avant */}
-            {coachScores.length >= 2 && (
-              <div className="grid grid-cols-2 gap-4 mb-2">
+            {/* Top 2 en avant */}
+            {coachScores.length >= 1 && (
+              <div className="grid grid-cols-2 gap-4">
                 {coachScores.slice(0, 2).map((cs, i) => (
                   <div key={cs.coach.id}
                     className="flex flex-col items-center gap-3 p-4 rounded-2xl border"
@@ -487,14 +425,14 @@ export default function ResultatsPage() {
                       borderColor: i === 0 ? 'rgba(232,101,26,0.6)' : 'rgba(232,101,26,0.2)',
                       background: i === 0 ? 'rgba(232,101,26,0.08)' : 'rgba(232,101,26,0.03)',
                     }}>
-                    <div className="text-xs font-bold text-white/50 uppercase tracking-widest">
-                      {i === 0 ? '🧑‍💼 Coach Principal' : '👨‍💼 Coach Adjoint'}
+                    <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest">
+                      {i === 0 ? '🧑‍💼 Principal' : '👨‍💼 Adjoint'}
                     </div>
                     <div className="relative">
                       <div className="w-20 h-20 rounded-full overflow-hidden border-2 bg-[#1A1A1A] flex items-center justify-center"
                         style={{ borderColor: '#E8651A', boxShadow: '0 0 16px rgba(232,101,26,0.4)' }}>
                         {cs.coach.photo_url
-                          ? <img src={cs.coach.photo_url} alt={cs.coach.last_name} className="w-full h-full object-cover object-top" />
+                          ? <img src={cs.coach.photo_url} alt={cs.coach.last_name} className="w-full h-full object-cover object-top"/>
                           : <span style={{ fontFamily: 'Bebas Neue,sans-serif', color: '#E8651A', fontSize: 24 }}>
                               {cs.coach.first_name[0]}{cs.coach.last_name[0]}
                             </span>
@@ -506,7 +444,7 @@ export default function ResultatsPage() {
                       </div>
                     </div>
                     <div className="text-center">
-                      <p style={{ fontFamily: 'Bebas Neue,sans-serif', color: '#E8651A', fontSize: 16 }} className="leading-tight">
+                      <p style={{ fontFamily: 'Bebas Neue,sans-serif', color: '#E8651A', fontSize: 15 }} className="leading-tight">
                         {cs.coach.first_name.toUpperCase()} {cs.coach.last_name.toUpperCase()}
                       </p>
                       <p className="text-white/40 text-xs mt-0.5">{cs.total} vote{cs.total > 1 ? 's' : ''}</p>
@@ -515,7 +453,6 @@ export default function ResultatsPage() {
                 ))}
               </div>
             )}
-
             {/* Classement complet */}
             {coachScores.map((cs, i) => (
               <div key={cs.coach.id}
@@ -523,42 +460,40 @@ export default function ResultatsPage() {
                 style={{
                   borderColor: i < 2 ? 'rgba(232,101,26,0.3)' : 'rgba(255,255,255,0.05)',
                   background: i < 2 ? 'linear-gradient(90deg, rgba(232,101,26,0.1) 0%, rgba(10,10,10,1) 100%)' : '#0A0A0A',
-                }}
-              >
+                }}>
                 <div className="w-8 text-center flex-shrink-0">
                   {i < 2
                     ? <span className="text-2xl">{['🥇','🥈'][i]}</span>
                     : <span style={{ fontFamily: 'Bebas Neue,sans-serif', color: 'rgba(255,255,255,0.2)' }} className="text-2xl">{i + 1}</span>
                   }
                 </div>
-                <div className="w-11 h-11 rounded-full overflow-hidden bg-[#1E1E1E] flex-shrink-0 flex items-center justify-center"
+                <div className="w-11 h-11 rounded-full overflow-hidden bg-[#1E1E1E] flex-shrink-0 flex items-center justify-center relative"
                   style={{ border: `2px solid ${i < 2 ? '#E8651A' : '#333'}` }}>
-                  <div className="w-full h-full relative flex items-center justify-center">
-                    {cs.coach.photo_url
-                      ? <img src={cs.coach.photo_url} alt={cs.coach.last_name} className="w-full h-full object-cover" />
-                      : null
-                    }
-                    <span className="absolute" style={{ fontFamily: 'Bebas Neue,sans-serif', color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>
-                      {cs.coach.first_name[0]}{cs.coach.last_name[0]}
-                    </span>
-                  </div>
+                  {cs.coach.photo_url
+                    ? <img src={cs.coach.photo_url} alt={cs.coach.last_name} className="w-full h-full object-cover"/>
+                    : null
+                  }
+                  <span className="absolute" style={{ fontFamily: 'Bebas Neue,sans-serif', color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>
+                    {cs.coach.first_name[0]}{cs.coach.last_name[0]}
+                  </span>
                 </div>
                 <div className="flex-1 min-w-0 pr-2">
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="font-bold text-sm truncate" style={{ color: i < 2 ? 'white' : 'rgba(255,255,255,0.5)' }}>
                       {cs.coach.first_name} {cs.coach.last_name.toUpperCase()}
                     </span>
-                    <div className="flex items-center gap-2 ml-2 flex-shrink-0 text-xs text-white/40">
-                      {cs.headVotes > 0 && <span>🧑‍💼{cs.headVotes}</span>}
-                      {cs.assistantVotes > 0 && <span>👨‍💼{cs.assistantVotes}</span>}
+                    <div className="flex items-center gap-2 ml-2 flex-shrink-0">
+                      {cs.headVotes > 0 && <span className="text-xs text-white/40">🧑‍💼×{cs.headVotes}</span>}
+                      {cs.assistantVotes > 0 && <span className="text-xs text-white/40">👨‍💼×{cs.assistantVotes}</span>}
                       <span style={{ fontFamily: 'Bebas Neue,sans-serif' }} className="text-xl text-[#E8651A]">{cs.total}</span>
                     </div>
                   </div>
                   <div className="h-1.5 bg-black/50 rounded-full overflow-hidden border border-white/5">
-                    <div
-                      className="h-full rounded-full transition-all duration-1000 ease-out"
-                      style={{ width: `${(cs.total / maxCoachTotal) * 100}%`, background: i < 2 ? 'linear-gradient(90deg, #A04000, #E8651A)' : '#333' }}
-                    />
+                    <div className="h-full rounded-full transition-all duration-1000 ease-out relative"
+                      style={{ width: `${(cs.total / (coachScores[0]?.total || 1)) * 100}%`,
+                        background: i < 2 ? 'linear-gradient(90deg, #A04000, #E8651A)' : '#333' }}>
+                      {i < 2 && <div className="absolute inset-0 bg-white/20 w-1/2 blur-sm"/>}
+                    </div>
                   </div>
                 </div>
                 {i < 2 && (
