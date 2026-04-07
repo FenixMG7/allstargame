@@ -1,15 +1,15 @@
 'use client';
- 
+
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase, Player } from '@/lib/supabase';
- 
+
 interface PlayerScore {
   player: Player;
   votes: number;
   bonuses: number;
 }
- 
+
 interface Coach {
   id: string;
   first_name: string;
@@ -17,7 +17,7 @@ interface Coach {
   photo_url: string | null;
   is_active: boolean;
 }
- 
+
 function AdminNav({ active, onChange }: { active: string; onChange: (t: string) => void }) {
   const tabs = [
     { id: 'results', label: '📊 Résultats' },
@@ -43,12 +43,12 @@ function AdminNav({ active, onChange }: { active: string; onChange: (t: string) 
     </div>
   );
 }
- 
+
 function ResultsTab() {
   const [scores, setScores] = useState<PlayerScore[]>([]);
   const [stats, setStats] = useState({ totalVotes: 0, totalCodes: 0, usedCodes: 0 });
   const [loading, setLoading] = useState(true);
- 
+
   const fetchResults = useCallback(async () => {
     const { data: players } = await supabase.from('players').select('*').eq('is_active', true);
     if (!players) return;
@@ -56,7 +56,7 @@ function ResultsTab() {
     const { count: totalCodes } = await supabase.from('voting_codes').select('*', { count: 'exact', head: true });
     const { count: usedCodes } = await supabase.from('voting_codes').select('*', { count: 'exact', head: true }).eq('status', 'used');
     if (!votes) return;
- 
+
     const voteCount: Record<string, number> = {};
     const bonusCount: Record<string, number> = {};
     players.forEach(p => { voteCount[p.id] = 0; bonusCount[p.id] = 0; });
@@ -66,16 +66,16 @@ function ResultsTab() {
       });
       if (v.bonus_player_id && bonusCount[v.bonus_player_id] !== undefined) bonusCount[v.bonus_player_id]++;
     });
- 
+
     const scored = players
       .map(p => ({ player: p, votes: voteCount[p.id] || 0, bonuses: bonusCount[p.id] || 0 }))
       .sort((a, b) => b.votes - a.votes || b.bonuses - a.bonuses);
- 
+
     setScores(scored);
     setStats({ totalVotes: votes.length, totalCodes: totalCodes || 0, usedCodes: usedCodes || 0 });
     setLoading(false);
   }, []);
- 
+
   useEffect(() => {
     fetchResults();
     const channel = supabase.channel('votes-rt')
@@ -83,11 +83,11 @@ function ResultsTab() {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [fetchResults]);
- 
+
   const maxVotes = scores[0]?.votes || 1;
- 
+
   if (loading) return <div className="flex justify-center py-20"><div className="spinner" style={{width:32,height:32,borderWidth:3}} /></div>;
- 
+
   return (
     <div className="flex flex-col gap-6">
       <div className="grid grid-cols-3 gap-4">
@@ -139,7 +139,7 @@ function ResultsTab() {
     </div>
   );
 }
- 
+
 function CodesTab() {
   const [quantity, setQuantity] = useState(50);
   const [generating, setGenerating] = useState(false);
@@ -148,14 +148,14 @@ function CodesTab() {
   const [searchCode, setSearchCode] = useState('');
   const [invalidating, setInvalidating] = useState(false);
   const [invalidateMsg, setInvalidateMsg] = useState('');
- 
+
   useEffect(() => { fetchCodes(); }, []);
- 
+
   async function fetchCodes() {
     const { data } = await supabase.from('voting_codes').select('code,status').order('created_at',{ascending:false}).limit(100);
     if (data) setCodes(data);
   }
- 
+
   async function generateCodes() {
     setGenerating(true);
     const newCodes = Array.from({length: quantity}, () => {
@@ -167,7 +167,7 @@ function CodesTab() {
     if (!error) { setGenerated(newCodes); fetchCodes(); }
     setGenerating(false);
   }
- 
+
   async function invalidateCode() {
     setInvalidating(true);
     setInvalidateMsg('');
@@ -187,13 +187,13 @@ function CodesTab() {
     }
     setTimeout(() => setInvalidateMsg(''), 4000);
   }
- 
+
   async function quickInvalidate(code: string) {
     if (!confirm(`Invalider le code ${code} ?`)) return;
     await supabase.from('voting_codes').update({ status: 'disabled' }).eq('code', code);
     fetchCodes();
   }
- 
+
   function exportCSV(data: string[], filename: string) {
     const csv = ['Code', ...data].join('\n');
     const blob = new Blob([csv], {type:'text/csv'});
@@ -201,11 +201,11 @@ function CodesTab() {
     const a = document.createElement('a');
     a.href = url; a.download = filename; a.click();
   }
- 
+
   const valid = codes.filter(c => c.status === 'valid').length;
   const used = codes.filter(c => c.status === 'used').length;
   const disabled = codes.filter(c => c.status === 'disabled').length;
- 
+
   return (
     <div className="flex flex-col gap-6">
       <div className="grid grid-cols-3 gap-4">
@@ -296,20 +296,20 @@ function CodesTab() {
     </div>
   );
 }
- 
+
 function PlayersTab() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [form, setForm] = useState({first_name:'',last_name:'',number:'',position:'PG'});
   const [saving, setSaving] = useState(false);
   const [uploadingId, setUploadingId] = useState<string|null>(null);
- 
+
   useEffect(() => { fetchPlayers(); }, []);
- 
+
   async function fetchPlayers() {
     const { data } = await supabase.from('players').select('*').order('last_name');
     if (data) setPlayers(data);
   }
- 
+
   async function addPlayer(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -318,40 +318,58 @@ function PlayersTab() {
     fetchPlayers();
     setSaving(false);
   }
- 
+
   async function uploadPhoto(playerId: string, file: File) {
     setUploadingId(playerId);
     try {
+      // Supprimer l'ancienne photo (ignore l'erreur si elle n'existe pas)
       const found = players.find(p => p.id === playerId);
       if (found?.photo_url) {
-        const parts = found.photo_url.split('/');
-        const old = parts[parts.length - 1].split('?')[0];
-        await supabase.storage.from('players').remove([old]);
+        const segments = found.photo_url.split('/');
+        const oldName = segments[segments.length - 1].split('?')[0];
+        await supabase.storage.from('players').remove([oldName]);
       }
-      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      // Nom unique à chaque upload → jamais de conflit, pas besoin d'upsert
+      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
       const path = `player-${playerId}-${Date.now()}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from('players').upload(path, file, {
-        upsert: false, cacheControl: '3600', contentType: file.type,
-      });
-      if (uploadError) { alert('Erreur upload: ' + uploadError.message); return; }
+      const { error: uploadError } = await supabase.storage
+        .from('players')
+        .upload(path, file, { upsert: false, cacheControl: '3600', contentType: file.type });
+      if (uploadError) {
+        console.error('Storage upload error:', uploadError);
+        alert('Erreur upload photo : ' + uploadError.message);
+        return;
+      }
       const { data: urlData } = supabase.storage.from('players').getPublicUrl(path);
-      await supabase.from('players').update({ photo_url: urlData.publicUrl }).eq('id', playerId);
+      const { error: dbError } = await supabase
+        .from('players')
+        .update({ photo_url: urlData.publicUrl })
+        .eq('id', playerId);
+      if (dbError) {
+        console.error('DB update error:', dbError);
+        alert('Erreur mise à jour base : ' + dbError.message);
+        return;
+      }
       fetchPlayers();
-    } catch (err) { console.error(err); alert('Erreur inattendue.'); }
-    finally { setUploadingId(null); }
+    } catch (err) {
+      console.error('Unexpected upload error:', err);
+      alert('Erreur inattendue lors de l\'upload.');
+    } finally {
+      setUploadingId(null);
+    }
   }
- 
+
   async function toggleActive(id: string, current: boolean) {
     await supabase.from('players').update({is_active: !current}).eq('id', id);
     fetchPlayers();
   }
- 
+
   async function deletePlayer(id: string) {
     if (!confirm('Supprimer ce joueur ?')) return;
     await supabase.from('players').delete().eq('id', id);
     fetchPlayers();
   }
- 
+
   return (
     <div className="flex flex-col gap-6">
       <div className="bg-[#141414] border border-[#1E1E1E] rounded-xl p-5">
@@ -421,20 +439,20 @@ function PlayersTab() {
     </div>
   );
 }
- 
+
 function CoachesTab() {
   const [coaches, setCoaches] = useState<Coach[]>([]);
   const [form, setForm] = useState({first_name:'',last_name:''});
   const [saving, setSaving] = useState(false);
   const [uploadingId, setUploadingId] = useState<string|null>(null);
- 
+
   useEffect(() => { fetchCoaches(); }, []);
- 
+
   async function fetchCoaches() {
     const { data } = await supabase.from('coaches').select('*').order('last_name');
     if (data) setCoaches(data);
   }
- 
+
   async function addCoach(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -443,40 +461,58 @@ function CoachesTab() {
     fetchCoaches();
     setSaving(false);
   }
- 
+
   async function uploadPhoto(coachId: string, file: File) {
     setUploadingId(coachId);
     try {
+      // Supprimer l'ancienne photo (ignore l'erreur si elle n'existe pas)
       const found = coaches.find(c => c.id === coachId);
       if (found?.photo_url) {
-        const parts = found.photo_url.split('/');
-        const old = parts[parts.length - 1].split('?')[0];
-        await supabase.storage.from('players').remove([old]);
+        const segments = found.photo_url.split('/');
+        const oldName = segments[segments.length - 1].split('?')[0];
+        await supabase.storage.from('players').remove([oldName]);
       }
-      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+      // Nom unique à chaque upload → jamais de conflit, pas besoin d'upsert
+      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
       const path = `coach-${coachId}-${Date.now()}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from('players').upload(path, file, {
-        upsert: false, cacheControl: '3600', contentType: file.type,
-      });
-      if (uploadError) { alert('Erreur upload: ' + uploadError.message); return; }
+      const { error: uploadError } = await supabase.storage
+        .from('players')
+        .upload(path, file, { upsert: false, cacheControl: '3600', contentType: file.type });
+      if (uploadError) {
+        console.error('Storage upload error:', uploadError);
+        alert('Erreur upload photo : ' + uploadError.message);
+        return;
+      }
       const { data: urlData } = supabase.storage.from('players').getPublicUrl(path);
-      await supabase.from('coaches').update({ photo_url: urlData.publicUrl }).eq('id', coachId);
+      const { error: dbError } = await supabase
+        .from('coaches')
+        .update({ photo_url: urlData.publicUrl })
+        .eq('id', coachId);
+      if (dbError) {
+        console.error('DB update error:', dbError);
+        alert('Erreur mise à jour base : ' + dbError.message);
+        return;
+      }
       fetchCoaches();
-    } catch (err) { console.error(err); alert('Erreur inattendue.'); }
-    finally { setUploadingId(null); }
+    } catch (err) {
+      console.error('Unexpected upload error:', err);
+      alert('Erreur inattendue lors de l\'upload.');
+    } finally {
+      setUploadingId(null);
+    }
   }
- 
+
   async function toggleActive(id: string, current: boolean) {
     await supabase.from('coaches').update({is_active: !current}).eq('id', id);
     fetchCoaches();
   }
- 
+
   async function deleteCoach(id: string) {
     if (!confirm('Supprimer ce coach ?')) return;
     await supabase.from('coaches').delete().eq('id', id);
     fetchCoaches();
   }
- 
+
   return (
     <div className="flex flex-col gap-6">
       <div className="bg-[#141414] border border-[#1E1E1E] rounded-xl p-5">
@@ -534,13 +570,13 @@ function CoachesTab() {
     </div>
   );
 }
- 
+
 function SettingsTab() {
   const [settings, setSettings] = useState({is_open:false,event_name:'',event_date:''});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [siteUrl, setSiteUrl] = useState('');
- 
+
   useEffect(() => {
     setSiteUrl(window.location.origin);
     supabase.from('vote_settings').select('*').single().then(({data}) => {
@@ -548,17 +584,17 @@ function SettingsTab() {
       setLoading(false);
     });
   }, []);
- 
+
   const resultatsUrl = `${siteUrl}/resultats`;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(resultatsUrl)}&bgcolor=141414&color=E8651A&qzone=2`;
- 
+
   async function save() {
     setSaving(true);
     await supabase.from('vote_settings').update(settings).eq('id',1);
     setSaving(false);
     alert('Paramètres sauvegardés !');
   }
- 
+
   async function resetVotes() {
     if (!confirm('⚠️ Supprimer TOUS les votes ?\n\nCette action est IRRÉVERSIBLE.')) return;
     if (!confirm('Êtes-vous VRAIMENT sûr ?')) return;
@@ -566,7 +602,7 @@ function SettingsTab() {
     await supabase.from('voting_codes').update({status:'valid',used_at:null}).neq('id','00000000-0000-0000-0000-000000000000');
     alert('Votes réinitialisés.');
   }
- 
+
   async function resetEverything() {
     if (!confirm('💀 RÉINITIALISATION TOTALE\n\nCeci va supprimer :\n- Tous les votes\n- Tous les codes\n- Tous les joueurs\n- Tous les coachs\n\nCette action est IRRÉVERSIBLE !')) return;
     if (!confirm('⚠️ DERNIÈRE CHANCE — Êtes-vous ABSOLUMENT sûr ?')) return;
@@ -576,12 +612,12 @@ function SettingsTab() {
     await supabase.from('coaches').delete().neq('id','00000000-0000-0000-0000-000000000000');
     alert('✅ Réinitialisation totale effectuée.');
   }
- 
+
   if (loading) return <div className="spinner" style={{width:24,height:24,borderWidth:2}} />;
- 
+
   return (
     <div className="flex flex-col gap-6 max-w-md">
- 
+
       {/* QR Code */}
       <div className="bg-[#141414] border border-[#E8651A]/30 rounded-xl p-5 flex flex-col gap-4">
         <h3 className="font-semibold text-white text-sm uppercase tracking-wider">📱 QR Code Résultats</h3>
@@ -601,7 +637,7 @@ function SettingsTab() {
           </a>
         </div>
       </div>
- 
+
       {/* Paramètres */}
       <div className="bg-[#141414] border border-[#1E1E1E] rounded-xl p-5 flex flex-col gap-4">
         <h3 className="font-semibold text-white text-sm uppercase tracking-wider">Paramètres</h3>
@@ -634,7 +670,7 @@ function SettingsTab() {
           {saving ? 'Sauvegarde...' : '💾 Sauvegarder'}
         </button>
       </div>
- 
+
       {/* Zone dangereuse */}
       <div className="rounded-xl p-5 flex flex-col gap-4"
         style={{background:'rgba(153,27,27,0.2)',border:'1px solid rgba(153,27,27,0.5)'}}>
@@ -659,12 +695,12 @@ function SettingsTab() {
     </div>
   );
 }
- 
+
 export default function AdminPage() {
   const router = useRouter();
   const [tab, setTab] = useState('results');
   const [checking, setChecking] = useState(true);
- 
+
   useEffect(() => {
     const bypass = sessionStorage.getItem('admin_bypass');
     if (bypass === 'true') { setChecking(false); return; }
@@ -680,19 +716,19 @@ export default function AdminPage() {
     });
     return () => subscription.unsubscribe();
   }, [router]);
- 
+
   async function logout() {
     sessionStorage.removeItem('admin_bypass');
     await supabase.auth.signOut();
     router.replace('/admin/login');
   }
- 
+
   if (checking) return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="spinner" style={{width:32,height:32,borderWidth:3}} />
     </div>
   );
- 
+
   return (
     <main className="min-h-screen p-4 sm:p-6">
       <div className="max-w-5xl mx-auto">
