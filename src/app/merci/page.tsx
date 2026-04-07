@@ -54,17 +54,21 @@ function CourtPlayer({ player, position, isBonus, index }: {
 }) {
   const [visible, setVisible] = useState(false);
   useEffect(() => { const t = setTimeout(() => setVisible(true), index*300); return () => clearTimeout(t); }, [index]);
+  
   return (
     <div className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center"
       style={{ top: position.top, left: position.left, zIndex: 10,
         opacity: visible ? 1 : 0,
         transform: `translate(-50%,-50%) scale(${visible?1:0.3})`,
         transition: `opacity 0.5s ease ${index*300}ms, transform 0.5s cubic-bezier(0.34,1.56,0.64,1) ${index*300}ms` }}>
+      
       {isBonus && (
         <div className="absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap text-[9px] font-bold text-black px-1.5 py-0.5 rounded-full z-30"
           style={{ background:'#FFD700', boxShadow:'0 0 8px rgba(255,215,0,0.8)' }}>⭐ BONUS</div>
       )}
-      <div className="relative" style={{ width:64, height:64 }}>
+      
+      {/* CORRECTION 1 : Remplacement du style en ligne par les classes Tailwind (w-16 = 64px, h-16 = 64px) */}
+      <div className="relative w-16 h-16">
         <StarFrame isBonus={isBonus}/>
         <div className="absolute rounded-full overflow-hidden bg-[#1A1A1A] flex items-center justify-center"
           style={{ zIndex:2, top:6, left:6, right:6, bottom:6 }}>
@@ -78,7 +82,9 @@ function CourtPlayer({ player, position, isBonus, index }: {
           <span style={{ fontFamily:'Bebas Neue,sans-serif', color:'white', fontSize:10 }}>{player.number}</span>
         </div>
       </div>
-      <div className="text-center mt-1.5">
+      
+      {/* CORRECTION 2 : Changement de mt-1.5 à mt-3 pour laisser respirer l'étoile (qui déborde de 8px en bas) */}
+      <div className="text-center mt-3">
         <p style={{ fontFamily:'Bebas Neue,sans-serif', color: isBonus?'#FFD700':'white',
           textShadow:'0 1px 6px rgba(0,0,0,1)', fontSize:11 }} className="leading-tight">
           {player.last_name.toUpperCase()}
@@ -271,4 +277,5 @@ export default function MerciPage() {
     </main>
   );
 }
+ 
  
