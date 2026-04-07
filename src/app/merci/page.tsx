@@ -54,7 +54,7 @@ function CourtPlayer({ player, position, isBonus, index }: {
 }) {
   const [visible, setVisible] = useState(false);
   useEffect(() => { const t = setTimeout(() => setVisible(true), index*300); return () => clearTimeout(t); }, [index]);
-  
+
   return (
     <div className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center"
       style={{ top: position.top, left: position.left, zIndex: 10,
@@ -67,7 +67,7 @@ function CourtPlayer({ player, position, isBonus, index }: {
           style={{ background:'#FFD700', boxShadow:'0 0 8px rgba(255,215,0,0.8)' }}>⭐ BONUS</div>
       )}
       
-      {/* CORRECTION 1 : Remplacement du style en ligne par les classes Tailwind (w-16 = 64px, h-16 = 64px) */}
+      {/* CORRECTION 1 : Remplacement du style en ligne par les classes Tailwind (w-16 = 64px, h-16 = 64px) pour garantir des dimensions stables */}
       <div className="relative w-16 h-16">
         <StarFrame isBonus={isBonus}/>
         <div className="absolute rounded-full overflow-hidden bg-[#1A1A1A] flex items-center justify-center"
@@ -83,11 +83,19 @@ function CourtPlayer({ player, position, isBonus, index }: {
         </div>
       </div>
       
-      {/* CORRECTION 2 : Changement de mt-1.5 à mt-3 pour laisser respirer l'étoile (qui déborde de 8px en bas) */}
-      <div className="text-center mt-3">
+      {/* CORRECTION 2 : Nouveau bloc de texte avec une marge supérieure accrue pour laisser respirer l'étoile */}
+      <div className="text-center mt-3 flex flex-col items-center gap-0.5"> // mt-3 assure un bon espacement, gap sépare les lignes de texte
+        
+        {/* Affichage du NOM DE FAMILLE (déjà présent) */}
         <p style={{ fontFamily:'Bebas Neue,sans-serif', color: isBonus?'#FFD700':'white',
           textShadow:'0 1px 6px rgba(0,0,0,1)', fontSize:11 }} className="leading-tight">
           {player.last_name.toUpperCase()}
+        </p>
+
+        {/* AJOUT 1 : Affichage du PRÉNOM (juste en dessous, légèrement plus petit/discret) */}
+        <p style={{ fontFamily:'Bebas Neue,sans-serif', color: isBonus?'#FFD700':'white',
+          textShadow:'0 1px 6px rgba(0,0,0,1)', fontSize:10 }} className="leading-tight opacity-70"> // opacité réduite pour le prénom
+          {player.first_name.toUpperCase()} // Ou juste {player.first_name} pour la casse normale
         </p>
       </div>
     </div>
