@@ -346,7 +346,7 @@ export default function ResultatsPage() {
                 <div className="absolute inset-0">
                   <BasketballCourt3D />
                   <div className="absolute" style={{ top: '45%', left: '50%', transform: 'translate(-50%,-50%)', opacity: 0.05, zIndex: 1 }}>
-                    <img src="/logo.png" alt="" className="w-28 h-28 object-contain grayscale" />
+                    <img src="/logo.png" alt="" className="w-32 h-32 object-contain" />
                   </div>
                   {top5.map((s, i) => (
                     <CourtPlayer
@@ -414,7 +414,13 @@ export default function ResultatsPage() {
         )}
         {/* ── VUE COACHS ── */}
         {view === 'coachs' && (
-          <div className="flex flex-col gap-4">
+            <div className="grid grid-cols-2 gap-4"> // <-- C'est cette ligne magique qui les met côte à côte
+              {coachScores.slice(0, 2).map((cs, i) => (
+                <div key={cs.coach.id} className="bg-zinc-900/60 p-4 rounded-2xl text-center">
+                  {/* Contenu du coach (image + nom) */}
+            </div>
+          ))}
+        </div>
             {/* Top 2 en avant */}
             {coachScores.length >= 1 && (
               <div className="grid grid-cols-2 gap-4">
