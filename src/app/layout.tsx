@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 export const metadata: Metadata = {
   title: "All-Star Game — Vote",
@@ -20,6 +21,8 @@ export default function RootLayout({
         <div className="relative z-10">
           {children}
         </div>
+        {/* Analyse des performances Vercel */}
+        <SpeedInsights />
       </body>
     </html>
   );
