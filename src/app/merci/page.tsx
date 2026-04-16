@@ -84,7 +84,8 @@ function CourtPlayer({ player, position, isBonus, index }: {
       </div>
       
       {/* CORRECTION 2 : Nouveau bloc de texte avec une marge supérieure accrue pour laisser respirer l'étoile */}
-      <div className="text-center mt-3 flex flex-col items-center gap-0.5"> // mt-3 assure un bon espacement, gap sépare les lignes de texte
+      {/* mt-3 assure un bon espacement, gap sépare les lignes de texte */}
+      <div className="text-center mt-3 flex flex-col items-center gap-0.5"> 
         
         {/* Affichage du NOM DE FAMILLE (déjà présent) */}
         <p style={{ fontFamily:'Bebas Neue,sans-serif', color: isBonus?'#FFD700':'white',
@@ -93,9 +94,10 @@ function CourtPlayer({ player, position, isBonus, index }: {
         </p>
 
         {/* AJOUT 1 : Affichage du PRÉNOM (juste en dessous, légèrement plus petit/discret) */}
+        {/* opacité réduite pour le prénom */}
         <p style={{ fontFamily:'Bebas Neue,sans-serif', color: isBonus?'#FFD700':'white',
-          textShadow:'0 1px 6px rgba(0,0,0,1)', fontSize:10 }} className="leading-tight opacity-70"> // opacité réduite pour le prénom
-          {player.first_name.toUpperCase()} // Ou juste {player.first_name} pour la casse normale
+          textShadow:'0 1px 6px rgba(0,0,0,1)', fontSize:10 }} className="leading-tight opacity-70"> 
+          {player.first_name.toUpperCase()} {/* Ou juste {player.first_name} pour la casse normale */}
         </p>
       </div>
     </div>
