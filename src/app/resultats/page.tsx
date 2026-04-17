@@ -83,9 +83,11 @@ function splitIntoTeams(scores: PlayerScore[], coaches: CoachScore[]): [TeamData
     return real.reduce((a, b) => a.bonuses > b.bonuses ? a : b).player.id;
   };
 
+  // Coachs : top 2 → E1 (index 0 = principal, index 1 = adjoint)
+  //          suivants 2 → E2 (index 2 = principal, index 3 = adjoint)
   return [
-    { players: p1, coaches: coaches.filter((_, i) => i % 2 === 0), bonusLeaderId: bonusLeader(p1) },
-    { players: p2, coaches: coaches.filter((_, i) => i % 2 === 1), bonusLeaderId: bonusLeader(p2) },
+    { players: p1, coaches: coaches.slice(0, 2), bonusLeaderId: bonusLeader(p1) },
+    { players: p2, coaches: coaches.slice(2, 4), bonusLeaderId: bonusLeader(p2) },
   ];
 }
 
@@ -424,40 +426,41 @@ function PlayerRow({ score, rank, maxVotes }: { score: PlayerScore; rank: number
 }
 
 function CoachRow({ cs, rank, maxTotal }: { cs: CoachScore; rank: number; maxTotal: number }) {
-  const active = rank <= 4;
-  const inTop2 = rank <= 2;
-  const teamNum: 1 | 2 = rank % 2 === 1 ? 1 : 2;
+  // Rang 1-2 → E1 (principal/adjoint), Rang 3-4 → E2 (principal/adjoint)
+  const inTop4 = rank <= 4;
+  const teamNum: 1 | 2 = rank <= 2 ? 1 : 2;
+  const roleLabel = rank % 2 === 1 ? 'PRINCIPAL' : 'ADJOINT';
   const pct = maxTotal > 0 ? (cs.total / maxTotal) * 100 : 0;
 
   return (
     <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
       style={{
-        background: inTop2 ? 'linear-gradient(90deg,rgba(232,101,26,0.13) 0%,rgba(14,14,14,1) 70%)' : 'rgba(12,12,12,0.9)',
-        border: `1px solid ${inTop2 ? 'rgba(232,101,26,0.25)' : 'rgba(255,255,255,0.04)'}`,
+        background: inTop4 ? 'linear-gradient(90deg,rgba(232,101,26,0.13) 0%,rgba(14,14,14,1) 70%)' : 'rgba(12,12,12,0.9)',
+        border: `1px solid ${inTop4 ? 'rgba(232,101,26,0.25)' : 'rgba(255,255,255,0.04)'}`,
       }}>
-      <div className="w-7 flex-shrink-0 flex items-center justify-center"><RankBadge rank={rank} active={inTop2} /></div>
+      <div className="w-7 flex-shrink-0 flex items-center justify-center"><RankBadge rank={rank} active={inTop4} /></div>
       <Avatar photoUrl={cs.coach.photo_url} firstName={cs.coach.first_name} lastName={cs.coach.last_name}
-        size={42} borderColor={inTop2 ? '#E8651A' : '#2a2a2a'} active={inTop2} />
+        size={42} borderColor={inTop4 ? '#E8651A' : '#2a2a2a'} active={inTop4} />
       <div className="flex-1 min-w-0 flex flex-col gap-1">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 min-w-0">
             <TeamBadge num={teamNum} />
-            <span className="font-bold text-sm leading-tight truncate" style={{ color: active ? '#fff' : 'rgba(255,255,255,0.35)', letterSpacing: '0.02em' }}>
-              {cs.coach.first_name} <span style={{ color: inTop2 ? '#E8651A' : 'rgba(255,255,255,0.22)' }}>{cs.coach.last_name.toUpperCase()}</span>
+            <span className="font-bold text-sm leading-tight truncate" style={{ color: inTop4 ? '#fff' : 'rgba(255,255,255,0.35)', letterSpacing: '0.02em' }}>
+              {cs.coach.first_name} <span style={{ color: inTop4 ? '#E8651A' : 'rgba(255,255,255,0.22)' }}>{cs.coach.last_name.toUpperCase()}</span>
             </span>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0">
             {cs.headVotes > 0 && <span className="text-[10px] text-white/30">🧑‍💼×{cs.headVotes}</span>}
             {cs.assistantVotes > 0 && <span className="text-[10px] text-white/30">👨‍💼×{cs.assistantVotes}</span>}
-            <span style={{ fontFamily: 'Bebas Neue,sans-serif', fontSize: 20, color: inTop2 ? '#E8651A' : 'rgba(255,255,255,0.2)', lineHeight: 1 }}>{cs.total}</span>
+            <span style={{ fontFamily: 'Bebas Neue,sans-serif', fontSize: 20, color: inTop4 ? '#E8651A' : 'rgba(255,255,255,0.2)', lineHeight: 1 }}>{cs.total}</span>
           </div>
         </div>
-        <ProgressBar pct={pct} active={inTop2} />
+        <ProgressBar pct={pct} active={inTop4} />
       </div>
-      {inTop2 && (
+      {inTop4 && (
         <span className="flex-shrink-0 text-[9px] font-black px-2 py-0.5 rounded-full tracking-widest"
           style={{ background: 'rgba(232,101,26,0.15)', color: '#E8651A', border: '1px solid rgba(232,101,26,0.35)' }}>
-          {rank === 1 ? 'PRINCIPAL' : 'ADJOINT'}
+          {roleLabel}
         </span>
       )}
     </div>
@@ -625,8 +628,8 @@ export default function ResultatsPage() {
             {/* Vue par équipe */}
             <div className="grid grid-cols-2 gap-3 mb-2">
               {([
-                { label: 'ÉQUIPE 1', color: '#E8651A', list: coachScores.filter((_, i) => i % 2 === 0) },
-                { label: 'ÉQUIPE 2', color: '#3B9EF0', list: coachScores.filter((_, i) => i % 2 === 1) },
+                { label: 'ÉQUIPE 1', color: '#E8651A', list: coachScores.slice(0, 2) },
+                { label: 'ÉQUIPE 2', color: '#3B9EF0', list: coachScores.slice(2, 4) },
               ] as { label: string; color: string; list: CoachScore[] }[]).map(({ label, color, list }) => (
                 <div key={label} className="flex flex-col gap-2 p-3 rounded-xl"
                   style={{ background: `${color}0c`, border: `1px solid ${color}28` }}>
