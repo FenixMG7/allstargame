@@ -88,27 +88,36 @@ function splitIntoTeams(scores: PlayerScore[], coaches: CoachScore[]): [TeamData
     return real.reduce((a, b) => a.bonuses > b.bonuses ? a : b).player.id;
   };
 
-  // Trier par votes head_coach et assistant_coach séparément
+  // Attribution séquentielle sans doublon :
+  // Slot 1 : Principal E1  → meilleur headVotes
+  // Slot 2 : Principal E2  → meilleur headVotes parmi les non-assignés
+  // Slot 3 : Adjoint   E1  → meilleur assistantVotes parmi les non-assignés
+  // Slot 4 : Adjoint   E2  → meilleur assistantVotes parmi les non-assignés
+  const assigned = new Set<string>();
+
+  const pickBest = (sorted: CoachScore[]): CoachScore | null => {
+    const found = sorted.find(c => !assigned.has(c.coach.id));
+    if (found) assigned.add(found.coach.id);
+    return found ?? null;
+  };
+
   const byHead = [...coaches].sort((a, b) => b.headVotes - a.headVotes);
   const byAsst = [...coaches].sort((a, b) => b.assistantVotes - a.assistantVotes);
 
-  // Principal E1 = 1er vote head, Principal E2 = 2ème vote head
-  // Adjoint E1   = 1er vote assistant, Adjoint E2 = 2ème vote assistant
+  const headE1 = pickBest(byHead);
+  const headE2 = pickBest(byHead);
+  const asstE1 = pickBest(byAsst);
+  const asstE2 = pickBest(byAsst);
+
   return [
     {
       players: p1,
-      coaches: {
-        headCoach:      byHead[0] ?? null,
-        assistantCoach: byAsst[0] ?? null,
-      },
+      coaches: { headCoach: headE1, assistantCoach: asstE1 },
       bonusLeaderId: bonusLeader(p1),
     },
     {
       players: p2,
-      coaches: {
-        headCoach:      byHead[1] ?? null,
-        assistantCoach: byAsst[1] ?? null,
-      },
+      coaches: { headCoach: headE2, assistantCoach: asstE2 },
       bonusLeaderId: bonusLeader(p2),
     },
   ];
