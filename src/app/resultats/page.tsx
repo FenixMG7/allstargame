@@ -35,9 +35,14 @@ interface CoachScore {
   total: number;
 }
 
+interface TeamCoaches {
+  headCoach: CoachScore | null;
+  assistantCoach: CoachScore | null;
+}
+
 interface TeamData {
   players: PlayerScore[];
-  coaches: CoachScore[];
+  coaches: TeamCoaches;
   bonusLeaderId: string | null;
 }
 
@@ -83,11 +88,29 @@ function splitIntoTeams(scores: PlayerScore[], coaches: CoachScore[]): [TeamData
     return real.reduce((a, b) => a.bonuses > b.bonuses ? a : b).player.id;
   };
 
-  // Coachs : top 2 → E1 (index 0 = principal, index 1 = adjoint)
-  //          suivants 2 → E2 (index 2 = principal, index 3 = adjoint)
+  // Trier par votes head_coach et assistant_coach séparément
+  const byHead = [...coaches].sort((a, b) => b.headVotes - a.headVotes);
+  const byAsst = [...coaches].sort((a, b) => b.assistantVotes - a.assistantVotes);
+
+  // Principal E1 = 1er vote head, Principal E2 = 2ème vote head
+  // Adjoint E1   = 1er vote assistant, Adjoint E2 = 2ème vote assistant
   return [
-    { players: p1, coaches: coaches.slice(0, 2), bonusLeaderId: bonusLeader(p1) },
-    { players: p2, coaches: coaches.slice(2, 4), bonusLeaderId: bonusLeader(p2) },
+    {
+      players: p1,
+      coaches: {
+        headCoach:      byHead[0] ?? null,
+        assistantCoach: byAsst[0] ?? null,
+      },
+      bonusLeaderId: bonusLeader(p1),
+    },
+    {
+      players: p2,
+      coaches: {
+        headCoach:      byHead[1] ?? null,
+        assistantCoach: byAsst[1] ?? null,
+      },
+      bonusLeaderId: bonusLeader(p2),
+    },
   ];
 }
 
@@ -255,41 +278,47 @@ function CourtPlayer({ score, position, isBonus, rank, animDelay }: CourtPlayerP
 /* ═══════════════════════════════════════════════════
    BANDEAU COACHS D'UNE ÉQUIPE
 ═══════════════════════════════════════════════════ */
-function TeamCoachBanner({ coaches }: { coaches: CoachScore[] }) {
-  if (!coaches.length) return (
-    <div className="flex items-center justify-center py-2 px-3 rounded-xl text-xs text-white/25 italic"
-      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}>
-      Aucun coach assigné
+function CoachSlot({ cs, role }: { cs: CoachScore | null; role: string }) {
+  if (!cs) return (
+    <div className="flex items-center gap-2 opacity-30">
+      <div className="w-9 h-9 rounded-full bg-[#1C1C1C] border border-dashed border-white/20 flex items-center justify-center flex-shrink-0">
+        <span style={{ fontSize: 14 }}>❓</span>
+      </div>
+      <div className="flex flex-col leading-none">
+        <span className="text-[9px] text-white/30 font-bold tracking-widest uppercase">{role}</span>
+        <span style={{ fontFamily: 'Bebas Neue,sans-serif', color: 'rgba(255,255,255,0.25)', fontSize: 12 }}>En attente</span>
+      </div>
     </div>
   );
   return (
+    <div className="flex items-center gap-2">
+      <div className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center bg-[#1C1C1C] flex-shrink-0"
+        style={{ border: '2px solid #E8651A', boxShadow: '0 0 10px rgba(232,101,26,0.25)' }}>
+        {cs.coach.photo_url
+          ? <img src={cs.coach.photo_url} alt={cs.coach.last_name} className="w-full h-full object-cover object-top"/>
+          : <span style={{ fontFamily: 'Bebas Neue,sans-serif', color: '#E8651A', fontSize: 13 }}>
+              {cs.coach.first_name[0]}{cs.coach.last_name[0]}
+            </span>
+        }
+      </div>
+      <div className="flex flex-col leading-none">
+        <span className="text-[9px] text-white/30 font-bold tracking-widest uppercase">{role}</span>
+        <span style={{ fontFamily: 'Bebas Neue,sans-serif', color: '#E8651A', fontSize: 13, letterSpacing: '0.04em' }}>
+          {cs.coach.first_name.toUpperCase()} {cs.coach.last_name.toUpperCase()}
+        </span>
+        <span className="text-[10px] text-white/25">{cs.total} vote{cs.total !== 1 ? 's' : ''}</span>
+      </div>
+    </div>
+  );
+}
+
+function TeamCoachBanner({ coaches }: { coaches: TeamCoaches }) {
+  return (
     <div className="flex items-center justify-center gap-3 flex-wrap px-3 py-2.5 rounded-xl"
       style={{ background: 'rgba(232,101,26,0.06)', border: '1px solid rgba(232,101,26,0.18)' }}>
-      {coaches.map((cs, i) => (
-        <div key={cs.coach.id} className="flex items-center gap-2">
-          <div className="relative flex-shrink-0">
-            <div className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center bg-[#1C1C1C]"
-              style={{ border: '2px solid #E8651A', boxShadow: '0 0 10px rgba(232,101,26,0.3)' }}>
-              {cs.coach.photo_url
-                ? <img src={cs.coach.photo_url} alt={cs.coach.last_name} className="w-full h-full object-cover object-top"/>
-                : <span style={{ fontFamily: 'Bebas Neue,sans-serif', color: '#E8651A', fontSize: 13 }}>
-                    {cs.coach.first_name[0]}{cs.coach.last_name[0]}
-                  </span>
-              }
-            </div>
-          </div>
-          <div className="flex flex-col leading-none">
-            <span className="text-[9px] text-white/30 font-bold tracking-widest uppercase">
-              {i === 0 ? 'Coach Principal' : 'Coach Adjoint'}
-            </span>
-            <span style={{ fontFamily: 'Bebas Neue,sans-serif', color: '#E8651A', fontSize: 13, letterSpacing: '0.04em' }}>
-              {cs.coach.first_name.toUpperCase()} {cs.coach.last_name.toUpperCase()}
-            </span>
-            <span className="text-[10px] text-white/25">{cs.total} vote{cs.total !== 1 ? 's' : ''}</span>
-          </div>
-          {i < coaches.length - 1 && <div className="w-px h-8 mx-1" style={{ background: 'rgba(255,255,255,0.08)' }}/>}
-        </div>
-      ))}
+      <CoachSlot cs={coaches.headCoach} role="Coach Principal" />
+      <div className="w-px h-8" style={{ background: 'rgba(255,255,255,0.08)' }}/>
+      <CoachSlot cs={coaches.assistantCoach} role="Coach Adjoint" />
     </div>
   );
 }
@@ -425,11 +454,11 @@ function PlayerRow({ score, rank, maxVotes }: { score: PlayerScore; rank: number
   );
 }
 
-function CoachRow({ cs, rank, maxTotal }: { cs: CoachScore; rank: number; maxTotal: number }) {
-  // Rang 1-2 → E1 (principal/adjoint), Rang 3-4 → E2 (principal/adjoint)
-  const inTop4 = rank <= 4;
-  const teamNum: 1 | 2 = rank <= 2 ? 1 : 2;
-  const roleLabel = rank % 2 === 1 ? 'PRINCIPAL' : 'ADJOINT';
+function CoachRow({ cs, rank, maxTotal, role, teamNum }: {
+  cs: CoachScore; rank: number; maxTotal: number;
+  role: string | null; teamNum: 1 | 2 | null;
+}) {
+  const inTop4 = !!role; // mis en avant si rôle assigné
   const pct = maxTotal > 0 ? (cs.total / maxTotal) * 100 : 0;
 
   return (
@@ -444,7 +473,7 @@ function CoachRow({ cs, rank, maxTotal }: { cs: CoachScore; rank: number; maxTot
       <div className="flex-1 min-w-0 flex flex-col gap-1">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 min-w-0">
-            <TeamBadge num={teamNum} />
+            {teamNum && <TeamBadge num={teamNum} />}
             <span className="font-bold text-sm leading-tight truncate" style={{ color: inTop4 ? '#fff' : 'rgba(255,255,255,0.35)', letterSpacing: '0.02em' }}>
               {cs.coach.first_name} <span style={{ color: inTop4 ? '#E8651A' : 'rgba(255,255,255,0.22)' }}>{cs.coach.last_name.toUpperCase()}</span>
             </span>
@@ -457,10 +486,10 @@ function CoachRow({ cs, rank, maxTotal }: { cs: CoachScore; rank: number; maxTot
         </div>
         <ProgressBar pct={pct} active={inTop4} />
       </div>
-      {inTop4 && (
+      {role && (
         <span className="flex-shrink-0 text-[9px] font-black px-2 py-0.5 rounded-full tracking-widest"
           style={{ background: 'rgba(232,101,26,0.15)', color: '#E8651A', border: '1px solid rgba(232,101,26,0.35)' }}>
-          {roleLabel}
+          {role}
         </span>
       )}
     </div>
@@ -628,34 +657,34 @@ export default function ResultatsPage() {
             {/* Vue par équipe */}
             <div className="grid grid-cols-2 gap-3 mb-2">
               {([
-                { label: 'ÉQUIPE 1', color: '#E8651A', list: coachScores.slice(0, 2) },
-                { label: 'ÉQUIPE 2', color: '#3B9EF0', list: coachScores.slice(2, 4) },
-              ] as { label: string; color: string; list: CoachScore[] }[]).map(({ label, color, list }) => (
+                { label: 'ÉQUIPE 1', color: '#E8651A', team: team1.coaches },
+                { label: 'ÉQUIPE 2', color: '#3B9EF0', team: team2.coaches },
+              ] as { label: string; color: string; team: TeamCoaches }[]).map(({ label, color, team }) => (
                 <div key={label} className="flex flex-col gap-2 p-3 rounded-xl"
                   style={{ background: `${color}0c`, border: `1px solid ${color}28` }}>
                   <span style={{ fontFamily: 'Bebas Neue,sans-serif', color, fontSize: 12, letterSpacing: '0.15em' }}>{label}</span>
-                  {list.length === 0
-                    ? <span className="text-xs text-white/22 italic">—</span>
-                    : list.map((cs, i) => (
-                      <div key={cs.coach.id} className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center bg-[#1C1C1C] flex-shrink-0"
-                          style={{ border: `1.5px solid ${color}` }}>
-                          {cs.coach.photo_url
-                            ? <img src={cs.coach.photo_url} alt={cs.coach.last_name} className="w-full h-full object-cover object-top"/>
-                            : <span style={{ fontFamily: 'Bebas Neue,sans-serif', color, fontSize: 11 }}>{cs.coach.first_name[0]}{cs.coach.last_name[0]}</span>
-                          }
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-[9px] font-bold tracking-widest uppercase" style={{ color: 'rgba(255,255,255,0.28)' }}>
-                            {i === 0 ? 'Principal' : 'Adjoint'}
-                          </p>
-                          <p className="text-xs font-bold leading-tight truncate" style={{ color: '#fff' }}>
-                            {cs.coach.first_name} <span style={{ color }}>{cs.coach.last_name.toUpperCase()}</span>
-                          </p>
-                        </div>
+                  {[
+                    { cs: team.headCoach, role: 'Principal' },
+                    { cs: team.assistantCoach, role: 'Adjoint' },
+                  ].map(({ cs, role }) => (
+                    <div key={role} className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full overflow-hidden flex items-center justify-center bg-[#1C1C1C] flex-shrink-0"
+                        style={{ border: `1.5px solid ${cs ? color : 'rgba(255,255,255,0.12)'}`, opacity: cs ? 1 : 0.4 }}>
+                        {cs?.coach.photo_url
+                          ? <img src={cs.coach.photo_url} alt={cs.coach.last_name} className="w-full h-full object-cover object-top"/>
+                          : <span style={{ fontFamily: 'Bebas Neue,sans-serif', color: cs ? color : 'rgba(255,255,255,0.3)', fontSize: 11 }}>
+                              {cs ? `${cs.coach.first_name[0]}${cs.coach.last_name[0]}` : '?'}
+                            </span>
+                        }
                       </div>
-                    ))
-                  }
+                      <div className="min-w-0">
+                        <p className="text-[9px] font-bold tracking-widest uppercase" style={{ color: 'rgba(255,255,255,0.28)' }}>{role}</p>
+                        <p className="text-xs font-bold leading-tight truncate" style={{ color: cs ? '#fff' : 'rgba(255,255,255,0.25)' }}>
+                          {cs ? <>{cs.coach.first_name} <span style={{ color }}>{cs.coach.last_name.toUpperCase()}</span></> : 'En attente'}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ))}
             </div>
@@ -667,9 +696,24 @@ export default function ResultatsPage() {
               <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.06)' }}/>
             </div>
 
-            {coachScores.map((cs, i) => (
-              <CoachRow key={cs.coach.id} cs={cs} rank={i + 1} maxTotal={coachScores[0]?.total || 1} />
-            ))}
+            {coachScores.map((cs, i) => {
+              // Déterminer le rôle : principal si 1er ou 2ème par headVotes, adjoint sinon
+              const byHead = [...coachScores].sort((a, b) => b.headVotes - a.headVotes);
+              const byAsst = [...coachScores].sort((a, b) => b.assistantVotes - a.assistantVotes);
+              const headRank  = byHead.findIndex(c => c.coach.id === cs.coach.id) + 1;
+              const asstRank  = byAsst.findIndex(c => c.coach.id === cs.coach.id) + 1;
+              // Assigner le rôle le plus favorable (1er ou 2ème)
+              let role: string | null = null;
+              let teamNum: 1 | 2 | null = null;
+              if (headRank === 1) { role = 'PRINCIPAL'; teamNum = 1; }
+              else if (headRank === 2) { role = 'PRINCIPAL'; teamNum = 2; }
+              else if (asstRank === 1) { role = 'ADJOINT'; teamNum = 1; }
+              else if (asstRank === 2) { role = 'ADJOINT'; teamNum = 2; }
+              return (
+                <CoachRow key={cs.coach.id} cs={cs} rank={i + 1} maxTotal={coachScores[0]?.total || 1}
+                  role={role} teamNum={teamNum} />
+              );
+            })}
           </div>
         )}
 
