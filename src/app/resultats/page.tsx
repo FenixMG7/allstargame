@@ -12,7 +12,7 @@ interface TeamCoaches { headCoach: CoachScore | null; assistantCoach: CoachScore
 interface TeamData    { players: PlayerScore[]; coaches: TeamCoaches; bonusLeaderId: string | null; }
 
 const COURT_POSITIONS = [
-  { top: '82%', left: '50%' }, { top: '58%', left: '15%' }, { top: '58%', left: '85%' },
+  { top: '82%', left: '50%' }, { top: '59%', left: '15%' }, { top: '58%', left: '85%' },
   { top: '28%', left: '28%' }, { top: '28%', left: '72%' },
 ];
 
