@@ -82,7 +82,12 @@ function PlayerCard({ player, selected, isBonus, canSelect, teamColor, onClick }
         </div>
       )}
       <div className="absolute top-2 left-2 w-7 h-7 rounded-full bg-[#1E1E1E] flex items-center justify-center z-10">
-        <span style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-sm leading-none" style2={{color: teamColor}}>{player.number}</span>
+        <span 
+  style={{ fontFamily: 'Bebas Neue,sans-serif', color: teamColor }} 
+  className="text-sm leading-none"
+>
+  {player.number}
+</span>
       </div>
       <div className="relative mt-3 w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden bg-[#1E1E1E] flex items-center justify-center">
         {player.photo_url
