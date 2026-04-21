@@ -626,6 +626,3 @@ export default function VotePage() {
     </main>
   );
 }
-    </main>
-  );
-}
