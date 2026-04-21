@@ -174,7 +174,7 @@ function ResultsTab() {
                   )}
                   <span className="font-semibold text-white text-sm truncate">{s.player.first_name} {s.player.last_name}</span>
                   <div className="flex items-center gap-3 ml-auto">
-                    {s.bonuses > 0 && <span className="text-xs text-[#FFD700]">⭐⭐ ×{s.bonuses}</span>}
+                    {s.bonuses > 0 && <span className="text-xs text-[#FFD700]">⭐ ×{s.bonuses}</span>}
                     <span style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-xl text-[#E8651A]">{s.votes}</span>
                   </div>
                 </div>
