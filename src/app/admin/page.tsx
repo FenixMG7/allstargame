@@ -610,6 +610,76 @@ function PlayersTab() {
         )}
       </div>
 
+      {/* ── Résumé par équipe ── */}
+      <div className="grid grid-cols-2 gap-3">
+        {[{n:1,color:'#E8651A',list:team1},{n:2,color:'#3B9EF0',list:team2}].map(({n,color,list}) => (
+          <div key={n} className="rounded-xl p-3 flex flex-col gap-1" style={{background:`${color}0c`,border:`1px solid ${color}28`}}>
+            <span style={{fontFamily:'Bebas Neue,sans-serif',color,fontSize:13,letterSpacing:'0.1em'}}>ÉQUIPE {n}</span>
+            <span style={{fontFamily:'Bebas Neue,sans-serif',color}} className="text-2xl">{list.length}</span>
+            <span className="text-white/30 text-xs">joueur{list.length!==1?'s':''}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Liste joueurs groupée ── */}
+      {[
+        {label:'ÉQUIPE 1', color:'#E8651A', list: team1},
+        {label:'ÉQUIPE 2', color:'#3B9EF0', list: team2},
+        {label:'NON ASSIGNÉS', color:'#666', list: unassigned},
+      ].map(({label, color, list}) => list.length > 0 && (
+        <div key={label}>
+          <div className="flex items-center gap-2 mb-2">
+            <div className="h-px flex-1" style={{background:`${color}30`}} />
+            <span style={{fontFamily:'Bebas Neue,sans-serif',color,fontSize:11,letterSpacing:'0.15em'}}>{label}</span>
+            <div className="h-px flex-1" style={{background:`${color}30`}} />
+          </div>
+          <div className="flex flex-col gap-3">
+            {list.map(p => (
+              <div key={p.id} className="bg-[#141414] border border-[#1E1E1E] rounded-xl p-4 flex items-center gap-4">
+                <div className="relative flex-shrink-0">
+                  <div className="w-14 h-14 rounded-full overflow-hidden bg-[#0A0A0A] border border-[#1E1E1E] flex items-center justify-center">
+                    {p.photo_url
+                      ? <img src={p.photo_url} alt={p.last_name} className="w-full h-full object-cover" />
+                      : <span style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-lg text-[#E8651A]/50">{p.first_name[0]}</span>
+                    }
+                  </div>
+                  <label className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110" style={{background:'#E8651A'}}>
+                    {uploadingId === p.id
+                      ? <div className="spinner" style={{width:12,height:12,borderWidth:2,borderColor:'white',borderTopColor:'transparent'}} />
+                      : <span className="text-white text-xs">📷</span>
+                    }
+                    <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && uploadPhoto(p.id, e.target.files[0])} />
+                  </label>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    {p.number ? <span style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-lg text-[#E8651A]">#{p.number}</span> : null}
+                    <span className="font-semibold text-white truncate">{p.first_name} {p.last_name}</span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-white/40 text-xs">{p.position}</span>
+                    <span className="text-white/20 text-xs">·</span>
+                    <TeamBadge team={p.team} onChange={(t) => assignTeam(p.id, t)} />
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <button onClick={() => toggleActive(p.id, p.is_active)}
+                    className="w-10 h-5 rounded-full transition-all relative"
+                    style={{background: p.is_active ? '#4ade80' : '#1E1E1E'}}>
+                    <span className="absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all"
+                      style={{left: p.is_active ? '22px' : '2px'}} />
+                  </button>
+                  <button onClick={() => deletePlayer(p.id)} className="text-red-400/40 hover:text-red-400 transition-colors">🗑</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /* ─── Onglet Coachs ───────────────────────────── */
 function CoachesTab() {
   const [coaches, setCoaches] = useState<Coach[]>([]);
