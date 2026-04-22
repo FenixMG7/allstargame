@@ -331,15 +331,21 @@ function CodesTab() {
 
 /* ─── Onglet Joueurs ──────────────────────────── */
 function PlayersTab() {
-  const [players, setPlayers] = useState<(Player & { team?: number | null })[]>([]);
-  const [form, setForm] = useState({ first_name:'', last_name:'', number:'', position:'PG', team: 1 as number });
-  const [saving, setSaving] = useState(false);
-  const [uploadingId, setUploadingId] = useState<string|null>(null);
+  type PlayerRow = Player & { team?: number | null };
+
+  const [players,    setPlayers]    = useState<PlayerRow[]>([]);
+  const [form,       setForm]       = useState({ first_name:'', last_name:'', number:'', position:'', team: 1 as number });
+  const [saving,     setSaving]     = useState(false);
+  const [uploadingId,setUploadingId]= useState<string|null>(null);
+
+  // ── Édition inline ──
+  const [editId,   setEditId]   = useState<string|null>(null);
+  const [editForm, setEditForm] = useState({ first_name:'', last_name:'', number:'', position:'', team: 1 as number });
 
   // ── Import CSV ──
-  const [csvPreview, setCsvPreview] = useState<{ first_name:string; last_name:string; number:string; position:string; team:number }[]>([]);
+  const [csvPreview,   setCsvPreview]   = useState<{ first_name:string; last_name:string; number:string; position:string; team:number }[]>([]);
   const [csvImporting, setCsvImporting] = useState(false);
-  const [csvMsg, setCsvMsg] = useState('');
+  const [csvMsg,       setCsvMsg]       = useState('');
   const [showCsvPanel, setShowCsvPanel] = useState(false);
 
   useEffect(() => { fetchPlayers(); }, []);
@@ -349,24 +355,48 @@ function PlayersTab() {
     if (data) setPlayers(data);
   }
 
+  // ── Ajout ──
   async function addPlayer(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
     await supabase.from('players').insert({
-      first_name: form.first_name,
+      first_name: form.first_name.trim(),
       last_name:  form.last_name.trim()  || '',
       number:     form.number.trim() ? Number(form.number) : 0,
-      position:   form.position || 'PG',
+      position:   form.position.trim()   || '',
       team:       form.team,
       is_active:  true,
     });
-    setForm({ first_name:'', last_name:'', number:'', position:'PG', team: 1 });
+    setForm({ first_name:'', last_name:'', number:'', position:'', team: 1 });
     fetchPlayers();
     setSaving(false);
   }
 
-  // Format CSV : first_name,last_name,number,position,team
-  // Seul first_name est obligatoire. Colonnes FR acceptées.
+  // ── Édition ──
+  function openEdit(p: PlayerRow) {
+    setEditId(p.id);
+    setEditForm({
+      first_name: p.first_name,
+      last_name:  p.last_name  || '',
+      number:     p.number != null && p.number !== 0 ? String(p.number) : '',
+      position:   p.position   || '',
+      team:       p.team ?? 1,
+    });
+  }
+
+  async function saveEdit(id: string) {
+    await supabase.from('players').update({
+      first_name: editForm.first_name.trim(),
+      last_name:  editForm.last_name.trim()  || '',
+      number:     editForm.number.trim() ? Number(editForm.number) : 0,
+      position:   editForm.position.trim()   || '',
+      team:       editForm.team,
+    }).eq('id', id);
+    setEditId(null);
+    fetchPlayers();
+  }
+
+  // ── CSV ──
   function parseCSV(text: string) {
     const lines = text.trim().split(/\r?\n/).filter(Boolean);
     if (lines.length < 2) return [];
@@ -383,7 +413,7 @@ function PlayersTab() {
         first_name: get('first_name'),
         last_name:  get('last_name'),
         number:     get('number'),
-        position:   get('position') || 'PG',
+        position:   get('position'),
         team:       get('team') === '2' ? 2 : 1,
       };
     }).filter(r => r.first_name.trim());
@@ -412,7 +442,7 @@ function PlayersTab() {
         first_name: r.first_name,
         last_name:  r.last_name  || '',
         number:     r.number ? Number(r.number) : 0,
-        position:   r.position || 'PG',
+        position:   r.position   || '',
         team:       r.team,
         is_active:  true,
       }))
@@ -468,35 +498,40 @@ function PlayersTab() {
     fetchPlayers();
   }
 
-  const team1 = players.filter(p => p.team === 1);
-  const team2 = players.filter(p => p.team === 2);
-  const unassigned = players.filter(p => !p.team);
+  const team1     = players.filter(p => p.team === 1);
+  const team2     = players.filter(p => p.team === 2);
+  const unassigned= players.filter(p => !p.team);
+
+  const inputCls  = "bg-[#0A0A0A] border border-[#1E1E1E] rounded-lg px-2.5 py-1.5 text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-[#E8651A] w-full";
+  const POSITIONS = ['PG','SG','SF','PF','C'];
 
   return (
     <div className="flex flex-col gap-6">
 
-      {/* ── Formulaire ajout manuel ── */}
+      {/* ── Formulaire ajout ── */}
       <div className="bg-[#141414] border border-[#1E1E1E] rounded-xl p-5">
         <h3 className="font-semibold text-white text-sm uppercase tracking-wider mb-1">Ajouter un joueur</h3>
         <p className="text-white/30 text-xs mb-4">Seuls le prénom et l&apos;équipe sont obligatoires.</p>
         <form onSubmit={addPlayer} className="grid grid-cols-2 gap-3">
-          <input placeholder="Prénom *" value={form.first_name}
-            onChange={e => setForm(prev => ({...prev, first_name: e.target.value}))} required
+          <input placeholder="Prénom *" value={form.first_name} required
+            onChange={e => setForm(p => ({...p, first_name: e.target.value}))}
             className="bg-[#0A0A0A] border border-[#E8651A]/40 rounded-lg px-3 py-2 text-white placeholder:text-white/20 focus:outline-none focus:border-[#E8651A]" />
           <input placeholder="Nom (optionnel)" value={form.last_name}
-            onChange={e => setForm(prev => ({...prev, last_name: e.target.value}))}
+            onChange={e => setForm(p => ({...p, last_name: e.target.value}))}
             className="bg-[#0A0A0A] border border-[#1E1E1E] rounded-lg px-3 py-2 text-white placeholder:text-white/20 focus:outline-none focus:border-[#E8651A]" />
           <input type="number" placeholder="Numéro (optionnel)" value={form.number}
-            onChange={e => setForm(prev => ({...prev, number: e.target.value}))}
+            onChange={e => setForm(p => ({...p, number: e.target.value}))}
             className="bg-[#0A0A0A] border border-[#1E1E1E] rounded-lg px-3 py-2 text-white placeholder:text-white/20 focus:outline-none focus:border-[#E8651A]" />
-          <select value={form.position} onChange={e => setForm(prev => ({...prev, position: e.target.value}))}
+          {/* Poste optionnel : select + option vide */}
+          <select value={form.position} onChange={e => setForm(p => ({...p, position: e.target.value}))}
             className="bg-[#0A0A0A] border border-[#1E1E1E] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-[#E8651A]">
-            {['PG','SG','SF','PF','C'].map(p => <option key={p} value={p}>{p}</option>)}
+            <option value="">Poste (optionnel)</option>
+            {POSITIONS.map(pos => <option key={pos} value={pos}>{pos}</option>)}
           </select>
           <div className="col-span-2 flex items-center gap-3">
             <span className="text-white/50 text-xs uppercase tracking-wider">Équipe * :</span>
             {[1, 2].map(n => (
-              <button key={n} type="button" onClick={() => setForm(prev => ({...prev, team: n}))}
+              <button key={n} type="button" onClick={() => setForm(p => ({...p, team: n}))}
                 className="px-4 py-1.5 rounded-lg text-sm font-bold transition-all"
                 style={{
                   background: form.team === n ? (n === 1 ? '#E8651A' : '#3B9EF0') : '#1A1A1A',
@@ -528,10 +563,8 @@ function PlayersTab() {
           </div>
           <span className="text-white/30 text-sm">{showCsvPanel ? '▲' : '▼'}</span>
         </button>
-
         {showCsvPanel && (
           <div className="px-5 pb-5 flex flex-col gap-4 border-t border-[#1E1E1E]">
-            {/* Format attendu */}
             <div className="bg-[#0A0A0A] rounded-xl p-4 flex flex-col gap-2 mt-4">
               <p className="text-white/50 text-xs font-bold uppercase tracking-wider">Format CSV</p>
               <p className="text-white/35 text-xs">Séparateur : <code className="text-[#E8651A]">,</code> ou <code className="text-[#E8651A]">;</code> — Seul le prénom est obligatoire.</p>
@@ -541,10 +574,8 @@ function PlayersTab() {
                 <div>Tom,,23,,2</div>
                 <div>Alexis,Dupont,,,1</div>
               </div>
-              <p className="text-white/25 text-[10px]">Colonnes FR aussi acceptées : prénom, nom, numéro, poste, équipe</p>
+              <p className="text-white/25 text-[10px]">Colonnes FR acceptées : prénom, nom, numéro, poste, équipe</p>
             </div>
-
-            {/* Upload */}
             <label className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-dashed cursor-pointer transition-all hover:border-[#E8651A]/60 hover:bg-[#E8651A]/5"
               style={{borderColor:'rgba(255,255,255,0.1)'}}>
               <span className="text-3xl">📄</span>
@@ -554,14 +585,11 @@ function PlayersTab() {
               </div>
               <input type="file" accept=".csv,text/csv" className="hidden" onChange={handleCSVFile} />
             </label>
-
             {csvMsg && (
               <p className={`text-sm font-medium ${csvMsg.startsWith('✅') ? 'text-green-400' : csvMsg.startsWith('❌') ? 'text-red-400' : 'text-[#E8651A]'}`}>
                 {csvMsg}
               </p>
             )}
-
-            {/* Aperçu + import */}
             {csvPreview.length > 0 && (
               <div className="flex flex-col gap-2">
                 <p className="text-white/50 text-xs font-bold uppercase tracking-wider">Aperçu — {csvPreview.length} joueur(s)</p>
@@ -579,14 +607,10 @@ function PlayersTab() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <span className="text-white text-xs font-semibold">{r.first_name} {r.last_name}</span>
-                          <span className="text-white/30 text-xs ml-2">
-                            {r.number ? `#${r.number}` : '—'} · {r.position}
-                          </span>
+                          <span className="text-white/30 text-xs ml-2">{r.number ? `#${r.number}` : '—'} · {r.position || '—'}</span>
                         </div>
                         <span className="text-[10px] font-black px-1.5 py-0.5 rounded flex-shrink-0"
-                          style={{background:`${tc}20`,color:tc,border:`1px solid ${tc}40`}}>
-                          E{r.team}
-                        </span>
+                          style={{background:`${tc}20`,color:tc,border:`1px solid ${tc}40`}}>E{r.team}</span>
                         <button onClick={() => setCsvPreview(prev => prev.filter((_,j)=>j!==i))}
                           className="text-red-400/30 hover:text-red-400 text-xs transition-colors flex-shrink-0">✕</button>
                       </div>
@@ -601,9 +625,7 @@ function PlayersTab() {
                     : `⬆️ Importer ${csvPreview.length} joueur${csvPreview.length>1?'s':''}`}
                 </button>
                 <button onClick={() => setCsvPreview([])}
-                  className="text-white/25 hover:text-white/50 text-xs transition-colors text-center">
-                  Annuler
-                </button>
+                  className="text-white/25 hover:text-white/50 text-xs transition-colors text-center">Annuler</button>
               </div>
             )}
           </div>
@@ -635,42 +657,102 @@ function PlayersTab() {
           </div>
           <div className="flex flex-col gap-3">
             {list.map(p => (
-              <div key={p.id} className="bg-[#141414] border border-[#1E1E1E] rounded-xl p-4 flex items-center gap-4">
-                <div className="relative flex-shrink-0">
-                  <div className="w-14 h-14 rounded-full overflow-hidden bg-[#0A0A0A] border border-[#1E1E1E] flex items-center justify-center">
-                    {p.photo_url
-                      ? <img src={p.photo_url} alt={p.last_name} className="w-full h-full object-cover" />
-                      : <span style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-lg text-[#E8651A]/50">{p.first_name[0]}</span>
-                    }
+              <div key={p.id} className="bg-[#141414] border border-[#1E1E1E] rounded-xl overflow-hidden">
+
+                {/* ── Vue normale ── */}
+                {editId !== p.id && (
+                  <div className="p-4 flex items-center gap-4">
+                    {/* Photo */}
+                    <div className="relative flex-shrink-0">
+                      <div className="w-14 h-14 rounded-full overflow-hidden bg-[#0A0A0A] border border-[#1E1E1E] flex items-center justify-center">
+                        {p.photo_url
+                          ? <img src={p.photo_url} alt={p.last_name} className="w-full h-full object-cover" />
+                          : <span style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-lg text-[#E8651A]/50">{p.first_name[0]}</span>
+                        }
+                      </div>
+                      <label className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110" style={{background:'#E8651A'}}>
+                        {uploadingId === p.id
+                          ? <div className="spinner" style={{width:12,height:12,borderWidth:2,borderColor:'white',borderTopColor:'transparent'}} />
+                          : <span className="text-white text-xs">📷</span>}
+                        <input type="file" accept="image/*" className="hidden"
+                          onChange={e => e.target.files?.[0] && uploadPhoto(p.id, e.target.files[0])} />
+                      </label>
+                    </div>
+                    {/* Infos */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        {p.number ? <span style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-lg text-[#E8651A]">#{p.number}</span> : null}
+                        <span className="font-semibold text-white truncate">{p.first_name} {p.last_name}</span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        {p.position && <span className="text-white/40 text-xs">{p.position}</span>}
+                        {p.position && <span className="text-white/20 text-xs">·</span>}
+                        <TeamBadge team={p.team} onChange={(t) => assignTeam(p.id, t)} />
+                      </div>
+                    </div>
+                    {/* Actions */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <button onClick={() => openEdit(p)}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:bg-[#E8651A]/20 text-white/40 hover:text-[#E8651A]"
+                        title="Modifier">
+                        ✏️
+                      </button>
+                      <button onClick={() => toggleActive(p.id, p.is_active)}
+                        className="w-10 h-5 rounded-full transition-all relative"
+                        style={{background: p.is_active ? '#4ade80' : '#1E1E1E'}}>
+                        <span className="absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all"
+                          style={{left: p.is_active ? '22px' : '2px'}} />
+                      </button>
+                      <button onClick={() => deletePlayer(p.id)} className="text-red-400/40 hover:text-red-400 transition-colors">🗑</button>
+                    </div>
                   </div>
-                  <label className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110" style={{background:'#E8651A'}}>
-                    {uploadingId === p.id
-                      ? <div className="spinner" style={{width:12,height:12,borderWidth:2,borderColor:'white',borderTopColor:'transparent'}} />
-                      : <span className="text-white text-xs">📷</span>
-                    }
-                    <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && uploadPhoto(p.id, e.target.files[0])} />
-                  </label>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    {p.number ? <span style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-lg text-[#E8651A]">#{p.number}</span> : null}
-                    <span className="font-semibold text-white truncate">{p.first_name} {p.last_name}</span>
+                )}
+
+                {/* ── Mode édition ── */}
+                {editId === p.id && (
+                  <div className="p-4 flex flex-col gap-3" style={{background:'rgba(232,101,26,0.04)',borderTop:'2px solid rgba(232,101,26,0.4)'}}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[#E8651A] text-xs font-black uppercase tracking-widest">✏️ Modifier le joueur</span>
+                      <button onClick={() => setEditId(null)} className="text-white/30 hover:text-white text-xs transition-colors">✕ Annuler</button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <input placeholder="Prénom *" value={editForm.first_name} required
+                        onChange={e => setEditForm(f => ({...f, first_name: e.target.value}))}
+                        className={inputCls.replace('border-[#1E1E1E]','border-[#E8651A]/40')} />
+                      <input placeholder="Nom (optionnel)" value={editForm.last_name}
+                        onChange={e => setEditForm(f => ({...f, last_name: e.target.value}))}
+                        className={inputCls} />
+                      <input type="number" placeholder="Numéro (optionnel)" value={editForm.number}
+                        onChange={e => setEditForm(f => ({...f, number: e.target.value}))}
+                        className={inputCls} />
+                      <select value={editForm.position}
+                        onChange={e => setEditForm(f => ({...f, position: e.target.value}))}
+                        className={inputCls}>
+                        <option value="">Poste (optionnel)</option>
+                        {POSITIONS.map(pos => <option key={pos} value={pos}>{pos}</option>)}
+                      </select>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-white/40 text-xs uppercase tracking-wider">Équipe :</span>
+                      {[1,2].map(n => (
+                        <button key={n} type="button" onClick={() => setEditForm(f => ({...f, team: n}))}
+                          className="px-3 py-1 rounded-lg text-xs font-bold transition-all"
+                          style={{
+                            background: editForm.team===n ? (n===1?'#E8651A':'#3B9EF0') : '#1A1A1A',
+                            color: editForm.team===n ? 'white' : 'rgba(255,255,255,0.4)',
+                            border: `1px solid ${editForm.team===n ? (n===1?'#E8651A':'#3B9EF0') : '#333'}`,
+                          }}>E{n}</button>
+                      ))}
+                    </div>
+                    <button onClick={() => saveEdit(p.id)}
+                      disabled={!editForm.first_name.trim()}
+                      className="font-semibold py-2 rounded-lg transition-all disabled:opacity-40 text-sm"
+                      style={{background:'#E8651A',color:'white'}}>
+                      💾 Sauvegarder
+                    </button>
                   </div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-white/40 text-xs">{p.position}</span>
-                    <span className="text-white/20 text-xs">·</span>
-                    <TeamBadge team={p.team} onChange={(t) => assignTeam(p.id, t)} />
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 flex-shrink-0">
-                  <button onClick={() => toggleActive(p.id, p.is_active)}
-                    className="w-10 h-5 rounded-full transition-all relative"
-                    style={{background: p.is_active ? '#4ade80' : '#1E1E1E'}}>
-                    <span className="absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all"
-                      style={{left: p.is_active ? '22px' : '2px'}} />
-                  </button>
-                  <button onClick={() => deletePlayer(p.id)} className="text-red-400/40 hover:text-red-400 transition-colors">🗑</button>
-                </div>
+                )}
+
               </div>
             ))}
           </div>
