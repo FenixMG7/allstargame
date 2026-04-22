@@ -336,6 +336,12 @@ function PlayersTab() {
   const [saving, setSaving] = useState(false);
   const [uploadingId, setUploadingId] = useState<string|null>(null);
 
+  // ── Import CSV ──
+  const [csvPreview, setCsvPreview] = useState<{ first_name:string; last_name:string; number:string; position:string; team:number }[]>([]);
+  const [csvImporting, setCsvImporting] = useState(false);
+  const [csvMsg, setCsvMsg] = useState('');
+  const [showCsvPanel, setShowCsvPanel] = useState(false);
+
   useEffect(() => { fetchPlayers(); }, []);
 
   async function fetchPlayers() {
@@ -346,10 +352,80 @@ function PlayersTab() {
   async function addPlayer(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
-    await supabase.from('players').insert({ ...form, number: Number(form.number), is_active: true });
+    await supabase.from('players').insert({
+      first_name: form.first_name,
+      last_name:  form.last_name.trim()  || '',
+      number:     form.number.trim() ? Number(form.number) : 0,
+      position:   form.position || 'PG',
+      team:       form.team,
+      is_active:  true,
+    });
     setForm({ first_name:'', last_name:'', number:'', position:'PG', team: 1 });
     fetchPlayers();
     setSaving(false);
+  }
+
+  // Format CSV : first_name,last_name,number,position,team
+  // Seul first_name est obligatoire. Colonnes FR acceptées.
+  function parseCSV(text: string) {
+    const lines = text.trim().split(/\r?\n/).filter(Boolean);
+    if (lines.length < 2) return [];
+    const sep = lines[0].includes(';') ? ';' : ',';
+    const headers = lines[0].split(sep).map(h => h.trim().toLowerCase()
+      .replace('prénom','first_name').replace('prenom','first_name')
+      .replace('nom','last_name').replace('numéro','number').replace('numero','number')
+      .replace('poste','position').replace('équipe','team').replace('equipe','team'));
+    const idx = (k: string) => headers.indexOf(k);
+    return lines.slice(1).map(line => {
+      const cols = line.split(sep).map(c => c.trim().replace(/^["']|["']$/g, ''));
+      const get  = (k: string) => idx(k) >= 0 ? (cols[idx(k)] || '') : '';
+      return {
+        first_name: get('first_name'),
+        last_name:  get('last_name'),
+        number:     get('number'),
+        position:   get('position') || 'PG',
+        team:       get('team') === '2' ? 2 : 1,
+      };
+    }).filter(r => r.first_name.trim());
+  }
+
+  function handleCSVFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const rows = parseCSV(ev.target?.result as string);
+      setCsvPreview(rows);
+      setCsvMsg(rows.length > 0
+        ? `${rows.length} joueur(s) détecté(s) — vérifiez avant d'importer`
+        : '❌ Aucun joueur valide. Vérifiez le format CSV.');
+    };
+    reader.readAsText(file, 'UTF-8');
+    e.target.value = '';
+  }
+
+  async function importCSV() {
+    if (!csvPreview.length) return;
+    setCsvImporting(true);
+    const { error } = await supabase.from('players').insert(
+      csvPreview.map(r => ({
+        first_name: r.first_name,
+        last_name:  r.last_name  || '',
+        number:     r.number ? Number(r.number) : 0,
+        position:   r.position || 'PG',
+        team:       r.team,
+        is_active:  true,
+      }))
+    );
+    setCsvImporting(false);
+    if (error) {
+      setCsvMsg('❌ Erreur : ' + error.message);
+    } else {
+      setCsvMsg(`✅ ${csvPreview.length} joueur(s) importé(s) !`);
+      setCsvPreview([]);
+      fetchPlayers();
+      setTimeout(() => { setCsvMsg(''); setShowCsvPanel(false); }, 3000);
+    }
   }
 
   async function assignTeam(playerId: string, team: number) {
@@ -375,7 +451,7 @@ function PlayersTab() {
       fetchPlayers();
     } catch (err) {
       console.error(err);
-      alert('Erreur inattendue lors de l\'upload.');
+      alert("Erreur inattendue lors de l'upload.");
     } finally {
       setUploadingId(null);
     }
@@ -398,23 +474,27 @@ function PlayersTab() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Formulaire ajout */}
+
+      {/* ── Formulaire ajout manuel ── */}
       <div className="bg-[#141414] border border-[#1E1E1E] rounded-xl p-5">
-        <h3 className="font-semibold text-white text-sm uppercase tracking-wider mb-4">Ajouter un joueur</h3>
+        <h3 className="font-semibold text-white text-sm uppercase tracking-wider mb-1">Ajouter un joueur</h3>
+        <p className="text-white/30 text-xs mb-4">Seuls le prénom et l&apos;équipe sont obligatoires.</p>
         <form onSubmit={addPlayer} className="grid grid-cols-2 gap-3">
-          <input placeholder="Prénom" value={form.first_name} onChange={e => setForm(prev => ({...prev, first_name: e.target.value}))} required
+          <input placeholder="Prénom *" value={form.first_name}
+            onChange={e => setForm(prev => ({...prev, first_name: e.target.value}))} required
+            className="bg-[#0A0A0A] border border-[#E8651A]/40 rounded-lg px-3 py-2 text-white placeholder:text-white/20 focus:outline-none focus:border-[#E8651A]" />
+          <input placeholder="Nom (optionnel)" value={form.last_name}
+            onChange={e => setForm(prev => ({...prev, last_name: e.target.value}))}
             className="bg-[#0A0A0A] border border-[#1E1E1E] rounded-lg px-3 py-2 text-white placeholder:text-white/20 focus:outline-none focus:border-[#E8651A]" />
-          <input placeholder="Nom" value={form.last_name} onChange={e => setForm(prev => ({...prev, last_name: e.target.value}))} required
-            className="bg-[#0A0A0A] border border-[#1E1E1E] rounded-lg px-3 py-2 text-white placeholder:text-white/20 focus:outline-none focus:border-[#E8651A]" />
-          <input type="number" placeholder="Numéro" value={form.number} onChange={e => setForm(prev => ({...prev, number: e.target.value}))} required
+          <input type="number" placeholder="Numéro (optionnel)" value={form.number}
+            onChange={e => setForm(prev => ({...prev, number: e.target.value}))}
             className="bg-[#0A0A0A] border border-[#1E1E1E] rounded-lg px-3 py-2 text-white placeholder:text-white/20 focus:outline-none focus:border-[#E8651A]" />
           <select value={form.position} onChange={e => setForm(prev => ({...prev, position: e.target.value}))}
             className="bg-[#0A0A0A] border border-[#1E1E1E] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-[#E8651A]">
             {['PG','SG','SF','PF','C'].map(p => <option key={p} value={p}>{p}</option>)}
           </select>
-          {/* Équipe à l'ajout */}
           <div className="col-span-2 flex items-center gap-3">
-            <span className="text-white/50 text-xs uppercase tracking-wider">Équipe :</span>
+            <span className="text-white/50 text-xs uppercase tracking-wider">Équipe * :</span>
             {[1, 2].map(n => (
               <button key={n} type="button" onClick={() => setForm(prev => ({...prev, team: n}))}
                 className="px-4 py-1.5 rounded-lg text-sm font-bold transition-all"
@@ -430,81 +510,105 @@ function PlayersTab() {
           <button type="submit" disabled={saving}
             className="col-span-2 font-semibold py-2 rounded-lg transition-all disabled:opacity-50"
             style={{background:'#E8651A',color:'white'}}>
-            {saving ? 'Ajout...' : '+ Ajouter le joueur'}
+            {saving ? 'Ajout...' : '+ Ajouter'}
           </button>
         </form>
       </div>
 
-      {/* Résumé par équipe */}
-      <div className="grid grid-cols-2 gap-3">
-        {[{n:1,color:'#E8651A',list:team1},{n:2,color:'#3B9EF0',list:team2}].map(({n,color,list}) => (
-          <div key={n} className="rounded-xl p-3 flex flex-col gap-1" style={{background:`${color}0c`,border:`1px solid ${color}28`}}>
-            <span style={{fontFamily:'Bebas Neue,sans-serif',color,fontSize:13,letterSpacing:'0.1em'}}>ÉQUIPE {n}</span>
-            <span style={{fontFamily:'Bebas Neue,sans-serif',color}} className="text-2xl">{list.length}</span>
-            <span className="text-white/30 text-xs">joueur{list.length!==1?'s':''}</span>
+      {/* ── Import CSV ── */}
+      <div className="bg-[#141414] border border-[#1E1E1E] rounded-xl overflow-hidden">
+        <button onClick={() => setShowCsvPanel(v => !v)}
+          className="w-full flex items-center justify-between px-5 py-4 text-left transition-colors hover:bg-white/5">
+          <div className="flex items-center gap-3">
+            <span className="text-xl">📂</span>
+            <div>
+              <p className="font-semibold text-white text-sm">Import CSV</p>
+              <p className="text-white/35 text-xs">Ajouter plusieurs joueurs depuis un fichier</p>
+            </div>
           </div>
-        ))}
-      </div>
+          <span className="text-white/30 text-sm">{showCsvPanel ? '▲' : '▼'}</span>
+        </button>
 
-      {/* Liste joueurs groupée */}
-      {[
-        {label:'ÉQUIPE 1', color:'#E8651A', list: team1},
-        {label:'ÉQUIPE 2', color:'#3B9EF0', list: team2},
-        {label:'NON ASSIGNÉS', color:'#666', list: unassigned},
-      ].map(({label, color, list}) => list.length > 0 && (
-        <div key={label}>
-          <div className="flex items-center gap-2 mb-2">
-            <div className="h-px flex-1" style={{background:`${color}30`}} />
-            <span style={{fontFamily:'Bebas Neue,sans-serif',color,fontSize:11,letterSpacing:'0.15em'}}>{label}</span>
-            <div className="h-px flex-1" style={{background:`${color}30`}} />
-          </div>
-          <div className="flex flex-col gap-3">
-            {list.map(p => (
-              <div key={p.id} className="bg-[#141414] border border-[#1E1E1E] rounded-xl p-4 flex items-center gap-4">
-                <div className="relative flex-shrink-0">
-                  <div className="w-14 h-14 rounded-full overflow-hidden bg-[#0A0A0A] border border-[#1E1E1E] flex items-center justify-center">
-                    {p.photo_url
-                      ? <img src={p.photo_url} alt={p.last_name} className="w-full h-full object-cover" />
-                      : <span style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-lg text-[#E8651A]/50">{p.first_name[0]}</span>
-                    }
-                  </div>
-                  <label className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110" style={{background:'#E8651A'}}>
-                    {uploadingId === p.id
-                      ? <div className="spinner" style={{width:12,height:12,borderWidth:2,borderColor:'white',borderTopColor:'transparent'}} />
-                      : <span className="text-white text-xs">📷</span>
-                    }
-                    <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && uploadPhoto(p.id, e.target.files[0])} />
-                  </label>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-lg text-[#E8651A]">#{p.number}</span>
-                    <span className="font-semibold text-white truncate">{p.first_name} {p.last_name}</span>
-                  </div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-white/40 text-xs">{p.position}</span>
-                    <span className="text-white/20 text-xs">·</span>
-                    {/* Boutons réassignation équipe */}
-                    <TeamBadge team={p.team} onChange={(t) => assignTeam(p.id, t)} />
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 flex-shrink-0">
-                  <button onClick={() => toggleActive(p.id, p.is_active)}
-                    className="w-10 h-5 rounded-full transition-all relative"
-                    style={{background: p.is_active ? '#4ade80' : '#1E1E1E'}}>
-                    <span className="absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all"
-                      style={{left: p.is_active ? '22px' : '2px'}} />
-                  </button>
-                  <button onClick={() => deletePlayer(p.id)} className="text-red-400/40 hover:text-red-400 transition-colors">🗑</button>
-                </div>
+        {showCsvPanel && (
+          <div className="px-5 pb-5 flex flex-col gap-4 border-t border-[#1E1E1E]">
+            {/* Format attendu */}
+            <div className="bg-[#0A0A0A] rounded-xl p-4 flex flex-col gap-2 mt-4">
+              <p className="text-white/50 text-xs font-bold uppercase tracking-wider">Format CSV</p>
+              <p className="text-white/35 text-xs">Séparateur : <code className="text-[#E8651A]">,</code> ou <code className="text-[#E8651A]">;</code> — Seul le prénom est obligatoire.</p>
+              <div className="mt-1 p-3 bg-black/40 rounded-lg font-mono text-[11px] text-white/50 overflow-x-auto">
+                <div>first_name,last_name,number,position,team</div>
+                <div>Lucas,Martin,7,PG,1</div>
+                <div>Tom,,23,,2</div>
+                <div>Alexis,Dupont,,,1</div>
               </div>
-            ))}
+              <p className="text-white/25 text-[10px]">Colonnes FR aussi acceptées : prénom, nom, numéro, poste, équipe</p>
+            </div>
+
+            {/* Upload */}
+            <label className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-dashed cursor-pointer transition-all hover:border-[#E8651A]/60 hover:bg-[#E8651A]/5"
+              style={{borderColor:'rgba(255,255,255,0.1)'}}>
+              <span className="text-3xl">📄</span>
+              <div className="text-center">
+                <p className="text-white font-semibold text-sm">Choisir un fichier CSV</p>
+                <p className="text-white/30 text-xs mt-0.5">.csv · UTF-8 recommandé</p>
+              </div>
+              <input type="file" accept=".csv,text/csv" className="hidden" onChange={handleCSVFile} />
+            </label>
+
+            {csvMsg && (
+              <p className={`text-sm font-medium ${csvMsg.startsWith('✅') ? 'text-green-400' : csvMsg.startsWith('❌') ? 'text-red-400' : 'text-[#E8651A]'}`}>
+                {csvMsg}
+              </p>
+            )}
+
+            {/* Aperçu + import */}
+            {csvPreview.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <p className="text-white/50 text-xs font-bold uppercase tracking-wider">Aperçu — {csvPreview.length} joueur(s)</p>
+                <div className="max-h-60 overflow-y-auto flex flex-col gap-1.5">
+                  {csvPreview.map((r, i) => {
+                    const tc = r.team === 1 ? '#E8651A' : '#3B9EF0';
+                    return (
+                      <div key={i} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#0A0A0A] border border-[#1E1E1E]">
+                        <span className="text-white/25 text-xs w-4 text-center flex-shrink-0">{i+1}</span>
+                        <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+                          style={{background:`${tc}20`,border:`1px solid ${tc}40`}}>
+                          <span style={{fontFamily:'Bebas Neue,sans-serif',color:tc,fontSize:11}}>
+                            {r.first_name[0]}{r.last_name?.[0] || ''}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-white text-xs font-semibold">{r.first_name} {r.last_name}</span>
+                          <span className="text-white/30 text-xs ml-2">
+                            {r.number ? `#${r.number}` : '—'} · {r.position}
+                          </span>
+                        </div>
+                        <span className="text-[10px] font-black px-1.5 py-0.5 rounded flex-shrink-0"
+                          style={{background:`${tc}20`,color:tc,border:`1px solid ${tc}40`}}>
+                          E{r.team}
+                        </span>
+                        <button onClick={() => setCsvPreview(prev => prev.filter((_,j)=>j!==i))}
+                          className="text-red-400/30 hover:text-red-400 text-xs transition-colors flex-shrink-0">✕</button>
+                      </div>
+                    );
+                  })}
+                </div>
+                <button onClick={importCSV} disabled={csvImporting}
+                  className="font-semibold py-2.5 rounded-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  style={{background:'#E8651A',color:'white'}}>
+                  {csvImporting
+                    ? <><div className="spinner" style={{width:16,height:16,borderWidth:2}} /> Import...</>
+                    : `⬆️ Importer ${csvPreview.length} joueur${csvPreview.length>1?'s':''}`}
+                </button>
+                <button onClick={() => setCsvPreview([])}
+                  className="text-white/25 hover:text-white/50 text-xs transition-colors text-center">
+                  Annuler
+                </button>
+              </div>
+            )}
           </div>
-        </div>
-      ))}
-    </div>
-  );
-}
+        )}
+      </div>
 
 /* ─── Onglet Coachs ───────────────────────────── */
 function CoachesTab() {
