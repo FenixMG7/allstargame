@@ -76,7 +76,9 @@ function PlayerCard({ player, selected, canSelect, teamColor, onClick }: {
         </div>
       )}
       <div className="absolute top-2 left-2 w-7 h-7 rounded-full bg-[#1E1E1E] flex items-center justify-center z-10">
-       <span style={{fontFamily:'Bebas Neue,sans-serif', color: teamColor}} className="...">     
+        <span style={{fontFamily:'Bebas Neue,sans-serif', color: teamColor}} className="text-xs">
+          {/* Tu peux injecter le numéro du joueur ici si tu le souhaites, par exemple {player.number} */}
+        </span>     
       </div>
       <div className="relative mt-3 w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden bg-[#1E1E1E] flex items-center justify-center">
         {player.photo_url
@@ -136,16 +138,12 @@ function CoachCard({ coach, selected, role, teamColor, onClick }: {
   );
 }
 
-/* ─── Modal confirmation ─────────────────────── */
-function ConfirmModal({ t1Players, t1Head, t1Asst, t2Players, t2Head, t2Asst, onConfirm, onCancel, loading }: {
-  t1Players: Player[]; t1Head: Coach; t1Asst: Coach;
-  t2Players: Player[]; t2Head: Coach; t2Asst: Coach;
-  onConfirm: () => void; onCancel: () => void; loading: boolean;
+/* ─── Sous-composant extrait pour de meilleures performances ────────────────────────────── */
+function TeamSection({ label, color, players, head, asst }: {
+  label: string; color: string;
+  players: Player[]; head: Coach; asst: Coach;
 }) {
-  const TeamSection = ({ label, color, players, head, asst }: {
-    label: string; color: string;
-    players: Player[]; head: Coach; asst: Coach;
-  }) => (
+  return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-2">
         <div className="w-2 h-2 rounded-full" style={{background: color}} />
@@ -157,6 +155,7 @@ function ConfirmModal({ t1Players, t1Head, t1Asst, t2Players, t2Head, t2Asst, on
           <div className="w-7 h-7 rounded-full overflow-hidden bg-[#1E1E1E] flex-shrink-0 flex items-center justify-center">
             {p.photo_url ? <img src={p.photo_url} alt="" className="w-full h-full object-cover"/> : <span style={{fontFamily:'Bebas Neue,sans-serif',color,fontSize:10}}>{p.first_name[0]}</span>}
           </div>
+          {/* Note: Assure-toi que p.number existe sur le type Player. S'il n'existe pas, il faudra l'ajouter à l'interface ou le retirer ici. */}
           <span className="flex-1 font-semibold text-white text-xs">{p.first_name} {p.last_name} <span className="text-white/30">#{p.number}</span></span>
         </div>
       ))}
@@ -171,7 +170,14 @@ function ConfirmModal({ t1Players, t1Head, t1Asst, t2Players, t2Head, t2Asst, on
       ))}
     </div>
   );
+}
 
+/* ─── Modal confirmation ─────────────────────── */
+function ConfirmModal({ t1Players, t1Head, t1Asst, t2Players, t2Head, t2Asst, onConfirm, onCancel, loading }: {
+  t1Players: Player[]; t1Head: Coach; t1Asst: Coach;
+  t2Players: Player[]; t2Head: Coach; t2Asst: Coach;
+  onConfirm: () => void; onCancel: () => void; loading: boolean;
+}) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
       <div className="w-full max-w-md bg-[#141414] border border-[#1E1E1E] rounded-2xl p-6 flex flex-col gap-5 animate-bounce-in max-h-[90vh] overflow-y-auto">
