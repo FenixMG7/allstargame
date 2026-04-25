@@ -8,11 +8,9 @@ interface Coach { id: string; first_name: string; last_name: string; photo_url?:
 
 interface VoteResult {
   t1Players: Player[];
-  t1Bonus: Player;
   t1HeadCoach: Coach;
   t1AssistantCoach: Coach;
   t2Players: Player[];
-  t2Bonus: Player;
   t2HeadCoach: Coach;
   t2AssistantCoach: Coach;
 }
@@ -23,9 +21,9 @@ const COURT_POSITIONS = [
 ];
 
 /* ─── Étoile ─ */
-function StarFrame({ isBonus }: { isBonus: boolean }) {
-  const color = isBonus ? '#FFD700' : '#E8651A';
-  const id = isBonus ? 'glow-gold' : 'glow-orange';
+function StarFrame() {
+  const color = '#E8651A';
+  const id = 'glow-orange';
   return (
     <svg viewBox="0 0 110 110" width="80" height="80" className="absolute inset-0 -m-2" style={{zIndex:1}}>
       <defs>
@@ -36,14 +34,14 @@ function StarFrame({ isBonus }: { isBonus: boolean }) {
       </defs>
       <polygon points="55,4 67,38 103,38 75,59 86,94 55,73 24,94 35,59 7,38 43,38"
         fill="none" stroke={color} strokeWidth="3.5" filter={`url(#${id})`}
-        style={{animation: isBonus ? 'pulse-gold 1.5s ease-in-out infinite' : 'pulse-orange 2s ease-in-out infinite'}}/>
+        style={{animation: 'pulse-orange 2s ease-in-out infinite'}}/>
     </svg>
   );
 }
 
 /* ─── Joueur terrain ─ */
-function CourtPlayer({ player, position, isBonus, index, teamColor }: {
-  player: Player; position:{top:string;left:string}; isBonus:boolean; index:number; teamColor:string;
+function CourtPlayer({ player, position, index, teamColor }: {
+  player: Player; position:{top:string;left:string}; index:number; teamColor:string;
 }) {
   const [visible, setVisible] = useState(false);
   useEffect(()=>{const t=setTimeout(()=>setVisible(true),index*300);return()=>clearTimeout(t);},[index]);
@@ -52,12 +50,9 @@ function CourtPlayer({ player, position, isBonus, index, teamColor }: {
       style={{top:position.top,left:position.left,zIndex:10,opacity:visible?1:0,
         transform:`translate(-50%,-50%) scale(${visible?1:0.3})`,
         transition:`opacity 0.5s ease ${index*300}ms,transform 0.5s cubic-bezier(0.34,1.56,0.64,1) ${index*300}ms`}}>
-      {isBonus && (
-        <div className="absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap text-[9px] font-bold text-black px-1.5 py-0.5 rounded-full z-30"
-          style={{background:'#FFD700',boxShadow:'0 0 8px rgba(255,215,0,0.8)'}}>⭐ BONUS</div>
-      )}
+
       <div className="relative w-16 h-16">
-        <StarFrame isBonus={isBonus}/>
+        <StarFrame/>
         <div className="absolute rounded-full overflow-hidden bg-[#1A1A1A] flex items-center justify-center"
           style={{zIndex:2,top:6,left:6,right:6,bottom:6}}>
           {player.photo_url
@@ -71,16 +66,16 @@ function CourtPlayer({ player, position, isBonus, index, teamColor }: {
         </div>
       </div>
       <div className="text-center mt-3 flex flex-col items-center gap-0.5">
-        <p style={{fontFamily:'Bebas Neue,sans-serif',color:isBonus?'#FFD700':'white',textShadow:'0 1px 6px rgba(0,0,0,1)',fontSize:11}} className="leading-tight">{player.last_name.toUpperCase()}</p>
-        <p style={{fontFamily:'Bebas Neue,sans-serif',color:isBonus?'#FFD700':'white',textShadow:'0 1px 6px rgba(0,0,0,1)',fontSize:10}} className="leading-tight opacity-70">{player.first_name.toUpperCase()}</p>
+        <p style={{fontFamily:'Bebas Neue,sans-serif',color:'white',textShadow:'0 1px 6px rgba(0,0,0,1)',fontSize:11}} className="leading-tight">{player.last_name.toUpperCase()}</p>
+        <p style={{fontFamily:'Bebas Neue,sans-serif',color:'white',textShadow:'0 1px 6px rgba(0,0,0,1)',fontSize:10}} className="leading-tight opacity-70">{player.first_name.toUpperCase()}</p>
       </div>
     </div>
   );
 }
 
 /* ─── Terrain ─ */
-function TeamCourt({ players, bonusId, teamColor, teamLabel, delayOffset }: {
-  players: Player[]; bonusId: string; teamColor: string; teamLabel: string; delayOffset: number;
+function TeamCourt({ players, teamColor, teamLabel, delayOffset }: {
+  players: Player[]; teamColor: string; teamLabel: string; delayOffset: number;
 }) {
   return (
     <div className="flex flex-col gap-2">
@@ -110,7 +105,7 @@ function TeamCourt({ players, bonusId, teamColor, teamLabel, delayOffset }: {
           </div>
           {players.map((player,i) => (
             <CourtPlayer key={player.id} player={player} position={COURT_POSITIONS[i]}
-              isBonus={player.id===bonusId} index={i} teamColor={teamColor}/>
+              index={i} teamColor={teamColor}/>
           ))}
         </div>
       </div>
@@ -172,7 +167,6 @@ export default function MerciPage() {
   return (
     <main className="min-h-screen pb-16 flex flex-col items-center px-4 py-8">
       <style>{`
-        @keyframes pulse-gold{0%,100%{opacity:1;filter:drop-shadow(0 0 6px rgba(255,215,0,0.9));}50%{opacity:0.7;filter:drop-shadow(0 0 14px rgba(255,215,0,1));}}
         @keyframes pulse-orange{0%,100%{opacity:1;filter:drop-shadow(0 0 4px rgba(232,101,26,0.7));}50%{opacity:0.8;filter:drop-shadow(0 0 10px rgba(232,101,26,1));}}
       `}</style>
 
@@ -196,7 +190,7 @@ export default function MerciPage() {
 
         {/* ── Équipe 1 ── */}
         <div className="page-enter">
-          <TeamCourt players={result.t1Players} bonusId={result.t1Bonus.id} teamColor="#E8651A" teamLabel="VOTRE ÉQUIPE 1" delayOffset={0}/>
+          <TeamCourt players={result.t1Players} teamColor="#E8651A" teamLabel="VOTRE ÉQUIPE 1" delayOffset={0}/>
           <div className="mt-3 bg-[#141414] border border-[#1E1E1E] rounded-2xl p-4">
             <div className="flex justify-around gap-4">
               <CoachCard coach={result.t1HeadCoach} role="PRINCIPAL" delay={600} teamColor="#E8651A"/>
@@ -214,7 +208,7 @@ export default function MerciPage() {
 
         {/* ── Équipe 2 ── */}
         <div className="page-enter">
-          <TeamCourt players={result.t2Players} bonusId={result.t2Bonus.id} teamColor="#3B9EF0" teamLabel="VOTRE ÉQUIPE 2" delayOffset={500}/>
+          <TeamCourt players={result.t2Players} teamColor="#3B9EF0" teamLabel="VOTRE ÉQUIPE 2" delayOffset={500}/>
           <div className="mt-3 bg-[#141414] border border-[#1E1E1E] rounded-2xl p-4">
             <div className="flex justify-around gap-4">
               <CoachCard coach={result.t2HeadCoach} role="PRINCIPAL" delay={1200} teamColor="#3B9EF0"/>
@@ -236,19 +230,17 @@ export default function MerciPage() {
               <div className="flex-1 h-px" style={{background:'rgba(232,101,26,0.3)'}}/>
             </div>
             {result.t1Players.map((player,i) => {
-              const isBonus = player.id === result.t1Bonus.id;
               return (
                 <div key={player.id} className="flex items-center gap-3 p-2.5 rounded-xl border"
-                  style={{borderColor:isBonus?'rgba(255,215,0,0.5)':'#1E1E1E',background:isBonus?'rgba(255,215,0,0.05)':'#0A0A0A'}}>
+                  style={{borderColor:'#1E1E1E',background:'#0A0A0A'}}>
                   <span style={{fontFamily:'Bebas Neue,sans-serif',color:'#E8651A'}} className="text-xl w-6 text-center">{i+1}</span>
                   <div className="w-9 h-9 rounded-full overflow-hidden bg-[#1E1E1E] flex-shrink-0 flex items-center justify-center">
                     {player.photo_url ? <img src={player.photo_url} alt="" className="w-full h-full object-cover"/> : <span style={{fontFamily:'Bebas Neue,sans-serif',color:'rgba(232,101,26,0.5)'}} className="text-sm">{player.first_name[0]}</span>}
                   </div>
                   <div className="flex-1">
-                    <span className="font-semibold text-sm block" style={{color:isBonus?'#FFD700':'white'}}>{player.first_name} {player.last_name}</span>
+                    <span className="font-semibold text-sm block" style={{color:'white'}}>{player.first_name} {player.last_name}</span>
                     <span className="text-white/40 text-xs">#{player.number} · {player.position}</span>
                   </div>
-                  {isBonus && <span className="text-[10px] font-bold text-black px-2 py-0.5 rounded-full" style={{background:'#FFD700'}}>⭐</span>}
                 </div>
               );
             })}
@@ -269,19 +261,17 @@ export default function MerciPage() {
               <div className="flex-1 h-px" style={{background:'rgba(59,158,240,0.3)'}}/>
             </div>
             {result.t2Players.map((player,i) => {
-              const isBonus = player.id === result.t2Bonus.id;
               return (
                 <div key={player.id} className="flex items-center gap-3 p-2.5 rounded-xl border"
-                  style={{borderColor:isBonus?'rgba(255,215,0,0.5)':'#1E1E1E',background:isBonus?'rgba(255,215,0,0.05)':'#0A0A0A'}}>
+                  style={{borderColor:'#1E1E1E',background:'#0A0A0A'}}>
                   <span style={{fontFamily:'Bebas Neue,sans-serif',color:'#3B9EF0'}} className="text-xl w-6 text-center">{i+1}</span>
                   <div className="w-9 h-9 rounded-full overflow-hidden bg-[#1E1E1E] flex-shrink-0 flex items-center justify-center">
                     {player.photo_url ? <img src={player.photo_url} alt="" className="w-full h-full object-cover"/> : <span style={{fontFamily:'Bebas Neue,sans-serif',color:'rgba(59,158,240,0.5)'}} className="text-sm">{player.first_name[0]}</span>}
                   </div>
                   <div className="flex-1">
-                    <span className="font-semibold text-sm block" style={{color:isBonus?'#FFD700':'white'}}>{player.first_name} {player.last_name}</span>
+                    <span className="font-semibold text-sm block" style={{color:'white'}}>{player.first_name} {player.last_name}</span>
                     <span className="text-white/40 text-xs">#{player.number} · {player.position}</span>
                   </div>
-                  {isBonus && <span className="text-[10px] font-bold text-black px-2 py-0.5 rounded-full" style={{background:'#FFD700'}}>⭐</span>}
                 </div>
               );
             })}
