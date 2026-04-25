@@ -6,10 +6,14 @@ import { supabase } from '@/lib/supabase';
 /* ══════════════════════════════════════ TYPES */
 interface Player { id: string; first_name: string; last_name: string; photo_url?: string; team?: number | null; }
 interface Coach  { id: string; first_name: string; last_name: string; photo_url?: string; team?: number | null; }
-interface PlayerScore { player: Player; votes: number; bonuses: number; isPlaceholder?: boolean; }
+interface PlayerScore { player: Player; votes: number; isPlaceholder?: boolean; }
 interface CoachScore  { coach: Coach; headVotes: number; assistantVotes: number; total: number; }
 interface TeamCoaches { headCoach: CoachScore | null; assistantCoach: CoachScore | null; }
-interface TeamData    { players: PlayerScore[]; coaches: TeamCoaches; bonusLeaderId: string | null; }
+interface TeamData    { players: PlayerScore[]; coaches: TeamCoaches; }
+
+/* Pondération coachs : principal = 1.5 pts, adjoint = 1 pt */
+const HEAD_WEIGHT = 1.5;
+const ASST_WEIGHT = 1;
 
 const COURT_POSITIONS = [
   { top: '82%', left: '50%' }, { top: '59%', left: '15%' }, { top: '58%', left: '85%' },
@@ -17,7 +21,7 @@ const COURT_POSITIONS = [
 ];
 
 function makePlaceholder(slot: number): PlayerScore {
-  return { player: { id: `ph-${slot}`, first_name: 'Joueur', last_name: `N°${slot}` }, votes: 0, bonuses: 0, isPlaceholder: true };
+  return { player: { id: `ph-${slot}`, first_name: 'Joueur', last_name: `N°${slot}` }, votes: 0, isPlaceholder: true };
 }
 
 function padTeam(scores: PlayerScore[]): PlayerScore[] {
@@ -61,42 +65,46 @@ function BasketballCourt3D({ uid }: { uid: string }) {
   );
 }
 
-/* ══════════════════════════════════════ ÉTOILE */
-function StarFrame({ isBonus, isPlaceholder }: { isBonus: boolean; isPlaceholder: boolean }) {
-  const color = isPlaceholder ? 'rgba(255,255,255,0.12)' : isBonus ? '#FFD700' : '#E8651A';
+/* ══════════════════════════════════════ ÉTOILE (orange uniquement) */
+function StarFrame({ isPlaceholder }: { isPlaceholder: boolean }) {
+  const color = isPlaceholder ? 'rgba(255,255,255,0.12)' : '#E8651A';
   return (
     <svg viewBox="0 0 110 110" width="92" height="92" className="absolute inset-0 -m-3.5" style={{zIndex:1}}>
-      <defs><filter id={`sf${isBonus?'g':isPlaceholder?'p':'o'}`} x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="2" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
-      <polygon points="55,4 67,38 103,38 75,59 86,94 55,73 24,94 35,59 7,38 43,38" fill="none" stroke={color} strokeWidth="3.5" filter={`url(#sf${isBonus?'g':isPlaceholder?'p':'o'})`}/>
+      <defs>
+        <filter id={`sf-${isPlaceholder?'p':'o'}`} x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="2" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <polygon points="55,4 67,38 103,38 75,59 86,94 55,73 24,94 35,59 7,38 43,38"
+        fill="none" stroke={color} strokeWidth="3.5" filter={`url(#sf-${isPlaceholder?'p':'o'})`}/>
     </svg>
   );
 }
 
 /* ══════════════════════════════════════ JOUEUR SUR TERRAIN */
-function CourtPlayer({ score, position, isBonus, rank, animDelay }: {
-  score: PlayerScore; position: {top:string;left:string}; isBonus:boolean; rank:number; animDelay:number;
+function CourtPlayer({ score, position, rank, animDelay }: {
+  score: PlayerScore; position: {top:string;left:string}; rank:number; animDelay:number;
 }) {
   const [visible, setVisible] = useState(false);
   const { player, votes, isPlaceholder } = score;
   useEffect(() => { const t = setTimeout(() => setVisible(true), animDelay); return () => clearTimeout(t); }, [animDelay]);
-  const badgeBg = isPlaceholder ? '#282828' : rank===1 ? '#FFD700' : '#E8651A';
+  const badgeBg = isPlaceholder ? '#282828' : rank === 1 ? '#FFD700' : '#E8651A';
   return (
     <div className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center"
       style={{ top:position.top, left:position.left, zIndex:10, opacity:visible?1:0,
         transform:`translate(-50%,-50%) scale(${visible?1:0.3})`,
         transition:`opacity 0.5s ease ${animDelay}ms,transform 0.6s cubic-bezier(0.34,1.56,0.64,1) ${animDelay}ms` }}>
-      {isBonus && !isPlaceholder && (
-        <div className="absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap text-[10px] font-extrabold text-black px-2 py-0.5 rounded-full z-30"
-          style={{background:'linear-gradient(90deg,#FFDF00,#D4AF37)',boxShadow:'0 0 15px rgba(255,215,0,0.9)'}}>⭐ BONUS</div>
-      )}
       <div className="relative" style={{width:66,height:66}}>
-        <StarFrame isBonus={isBonus} isPlaceholder={!!isPlaceholder}/>
+        <StarFrame isPlaceholder={!!isPlaceholder}/>
         <div className="absolute rounded-full overflow-hidden border-2 border-[#0A0A0A]"
           style={{zIndex:2,top:6,left:6,right:6,bottom:6}}>
           <div className="w-full h-full flex items-center justify-center" style={{background:isPlaceholder?'#111':'#1A1A1A'}}>
-            {player.photo_url && !isPlaceholder && <img src={player.photo_url} alt={player.last_name} className="w-full h-full object-cover object-top"/>}
+            {player.photo_url && !isPlaceholder && (
+              <img src={player.photo_url} alt={player.last_name} className="w-full h-full object-cover object-top" style={{filter:'contrast(1.1) saturate(1.1)'}}/>
+            )}
             {isPlaceholder
-              ? <span style={{fontSize:18}}>❓</span>
+              ? <span style={{fontSize:20,lineHeight:1}}>❓</span>
               : <span className="absolute" style={{fontFamily:'Bebas Neue,sans-serif',color:'white',fontSize:14,textShadow:'0 2px 4px rgba(0,0,0,0.9)'}}>{player.first_name[0]}{player.last_name[0]}</span>
             }
           </div>
@@ -107,7 +115,7 @@ function CourtPlayer({ score, position, isBonus, rank, animDelay }: {
         </div>
       </div>
       <div className="text-center mt-3 bg-[#0A0A0A]/60 px-3 py-1 rounded-lg backdrop-blur-sm border border-white/5">
-        <p style={{fontFamily:'Bebas Neue,sans-serif',color:isPlaceholder?'rgba(255,255,255,0.22)':isBonus?'#FFD700':'white',fontSize:13}} className="leading-none">
+        <p style={{fontFamily:'Bebas Neue,sans-serif',color:isPlaceholder?'rgba(255,255,255,0.22)':'white',fontSize:13}} className="leading-none">
           {isPlaceholder ? player.last_name : player.last_name.toUpperCase()}
         </p>
         <p style={{fontSize:10,color:isPlaceholder?'rgba(255,255,255,0.18)':'rgba(255,255,255,0.7)',marginTop:'2px'}}>
@@ -121,22 +129,27 @@ function CourtPlayer({ score, position, isBonus, rank, animDelay }: {
 /* ══════════════════════════════════════ BANDEAU COACHS */
 function TeamCoachBanner({ coaches }: { coaches: TeamCoaches }) {
   const Slot = ({ cs, role }: { cs: CoachScore | null; role: string }) => (
-    <div className="flex items-center gap-2" style={{opacity: cs ? 1 : 0.35}}>
+    <div className="flex items-center gap-2" style={{opacity:cs?1:0.35}}>
       <div className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center bg-[#1C1C1C] flex-shrink-0"
-        style={{border:`2px solid ${cs ? '#E8651A' : 'rgba(255,255,255,0.15)'}`}}>
+        style={{border:`2px solid ${cs?'#E8651A':'rgba(255,255,255,0.15)'}`}}>
         {cs?.coach.photo_url
           ? <img src={cs.coach.photo_url} alt={cs.coach.last_name} className="w-full h-full object-cover object-top"/>
           : <span style={{fontFamily:'Bebas Neue,sans-serif',color:cs?'#E8651A':'rgba(255,255,255,0.3)',fontSize:13}}>
-              {cs ? `${cs.coach.first_name[0]}${cs.coach.last_name[0]}` : '?'}
+              {cs?`${cs.coach.first_name[0]}${cs.coach.last_name[0]}`:'?'}
             </span>
         }
       </div>
       <div className="flex flex-col leading-none">
         <span className="text-[9px] text-white/30 font-bold tracking-widest uppercase">{role}</span>
         <span style={{fontFamily:'Bebas Neue,sans-serif',color:cs?'#E8651A':'rgba(255,255,255,0.25)',fontSize:13}}>
-          {cs ? `${cs.coach.first_name.toUpperCase()} ${cs.coach.last_name.toUpperCase()}` : 'En attente'}
+          {cs?`${cs.coach.first_name.toUpperCase()} ${cs.coach.last_name.toUpperCase()}`:'En attente'}
         </span>
-        {cs && <span className="text-[10px] text-white/25">{cs.total} vote{cs.total!==1?'s':''}</span>}
+        {cs && (
+          <span className="text-[10px] text-white/25">
+            {cs.headVotes>0 && `${cs.headVotes}×🧑‍💼`}{cs.headVotes>0&&cs.assistantVotes>0&&' '}{cs.assistantVotes>0&&`${cs.assistantVotes}×👨‍💼`}
+            {' · '}<span className="text-[#E8651A]">{cs.total.toFixed(1)} pts</span>
+          </span>
+        )}
       </div>
     </div>
   );
@@ -174,8 +187,8 @@ function TeamCourt({ team, teamLabel, teamColor, animKey }: {
             <img src="/logo.png" alt="" className="w-28 h-28 object-contain"/>
           </div>
           {team.players.map((s,i) => (
-            <CourtPlayer key={`${s.player.id}-${uid}-${animKey}`} score={s} position={COURT_POSITIONS[i]}
-              isBonus={!s.isPlaceholder && team.bonusLeaderId===s.player.id} rank={i+1} animDelay={i*180}/>
+            <CourtPlayer key={`${s.player.id}-${uid}-${animKey}`} score={s}
+              position={COURT_POSITIONS[i]} rank={i+1} animDelay={i*180}/>
           ))}
         </div>
       </div>
@@ -206,8 +219,10 @@ function ProgressBar({ pct, color }: { pct: number; color: string }) {
   );
 }
 
-function PlayerRow({ score, rank, maxVotes }: { score: PlayerScore; rank: number; maxVotes: number }) {
-  const teamColor = score.player.team === 1 ? '#E8651A' : '#3B9EF0';
+/* Ligne joueur — rank est le rang DANS l'équipe */
+function PlayerRow({ score, rank, maxVotes, teamColor }: {
+  score: PlayerScore; rank: number; maxVotes: number; teamColor: string;
+}) {
   const inTop5 = rank <= 5;
   const pct = maxVotes > 0 ? (score.votes / maxVotes) * 100 : 0;
   return (
@@ -222,19 +237,10 @@ function PlayerRow({ score, rank, maxVotes }: { score: PlayerScore; rank: number
         size={42} borderColor={inTop5?teamColor:'#2a2a2a'} active={inTop5}/>
       <div className="flex-1 min-w-0 flex flex-col gap-1">
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-black tracking-widest flex-shrink-0"
-              style={{background:`${teamColor}20`,color:teamColor,border:`1px solid ${teamColor}40`}}>
-              E{score.player.team||'?'}
-            </span>
-            <span className="font-bold text-sm leading-tight truncate" style={{color:inTop5?'#fff':'rgba(255,255,255,0.38)'}}>
-              {score.player.first_name} <span style={{color:inTop5?teamColor:'rgba(255,255,255,0.25)'}}>{score.player.last_name.toUpperCase()}</span>
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            {score.bonuses>0 && <span className="text-[11px] font-bold text-[#FFD700]">⭐×{score.bonuses}</span>}
-            <span style={{fontFamily:'Bebas Neue,sans-serif',fontSize:20,color:inTop5?teamColor:'rgba(255,255,255,0.2)',lineHeight:1}}>{score.votes}</span>
-          </div>
+          <span className="font-bold text-sm leading-tight truncate" style={{color:inTop5?'#fff':'rgba(255,255,255,0.38)'}}>
+            {score.player.first_name} <span style={{color:inTop5?teamColor:'rgba(255,255,255,0.25)'}}>{score.player.last_name.toUpperCase()}</span>
+          </span>
+          <span style={{fontFamily:'Bebas Neue,sans-serif',fontSize:20,color:inTop5?teamColor:'rgba(255,255,255,0.2)',lineHeight:1}}>{score.votes}</span>
         </div>
         <ProgressBar pct={pct} color={inTop5?teamColor:'#2a2a2a'}/>
       </div>
@@ -242,10 +248,11 @@ function PlayerRow({ score, rank, maxVotes }: { score: PlayerScore; rank: number
   );
 }
 
+/* Ligne coach avec pondération affichée */
 function CoachRow({ cs, rank, maxTotal, teamColor }: { cs: CoachScore; rank: number; maxTotal: number; teamColor: string }) {
   const inTop = rank <= 2;
   const pct = maxTotal > 0 ? (cs.total / maxTotal) * 100 : 0;
-  const roleLabel = rank % 2 === 1 ? 'PRINCIPAL' : 'ADJOINT';
+  const roleLabel = rank === 1 ? 'PRINCIPAL' : rank === 2 ? 'ADJOINT' : '';
   return (
     <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl"
       style={{background:inTop?`linear-gradient(90deg,${teamColor}13 0%,rgba(14,14,14,1) 70%)`:'rgba(12,12,12,0.9)',
@@ -261,105 +268,128 @@ function CoachRow({ cs, rank, maxTotal, teamColor }: { cs: CoachScore; rank: num
           <span className="font-bold text-sm leading-tight truncate" style={{color:inTop?'#fff':'rgba(255,255,255,0.38)'}}>
             {cs.coach.first_name} <span style={{color:inTop?teamColor:'rgba(255,255,255,0.22)'}}>{cs.coach.last_name.toUpperCase()}</span>
           </span>
-          <span style={{fontFamily:'Bebas Neue,sans-serif',fontSize:20,color:inTop?teamColor:'rgba(255,255,255,0.2)',lineHeight:1}}>{cs.total}</span>
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <span className="text-[10px] text-white/30">
+              {cs.headVotes>0&&`🧑‍💼×${cs.headVotes}`}{cs.headVotes>0&&cs.assistantVotes>0&&' '}{cs.assistantVotes>0&&`👨‍💼×${cs.assistantVotes}`}
+            </span>
+            <span style={{fontFamily:'Bebas Neue,sans-serif',fontSize:20,color:inTop?teamColor:'rgba(255,255,255,0.2)',lineHeight:1}}>
+              {cs.total % 1 === 0 ? cs.total : cs.total.toFixed(1)}
+            </span>
+          </div>
         </div>
         <ProgressBar pct={pct} color={inTop?teamColor:'#2a2a2a'}/>
       </div>
-      {inTop && <span className="flex-shrink-0 text-[9px] font-black px-2 py-0.5 rounded-full"
-        style={{background:`${teamColor}20`,color:teamColor,border:`1px solid ${teamColor}40`}}>{roleLabel}</span>}
+      {inTop && roleLabel && (
+        <span className="flex-shrink-0 text-[9px] font-black px-2 py-0.5 rounded-full"
+          style={{background:`${teamColor}20`,color:teamColor,border:`1px solid ${teamColor}40`}}>{roleLabel}</span>
+      )}
     </div>
   );
 }
 
 /* ══════════════════════════════════════ PAGE PRINCIPALE */
 export default function ResultatsPage() {
-  const [team1Data, setTeam1Data] = useState<TeamData>({ players: Array(5).fill(null).map((_,i)=>makePlaceholder(i+1)), coaches:{headCoach:null,assistantCoach:null}, bonusLeaderId:null });
-  const [team2Data, setTeam2Data] = useState<TeamData>({ players: Array(5).fill(null).map((_,i)=>makePlaceholder(i+1)), coaches:{headCoach:null,assistantCoach:null}, bonusLeaderId:null });
-  const [allScores,   setAllScores]   = useState<PlayerScore[]>([]);
-  const [t1CoachList, setT1CoachList] = useState<CoachScore[]>([]);
-  const [t2CoachList, setT2CoachList] = useState<CoachScore[]>([]);
-  const [loading,     setLoading]     = useState(true);
-  const [totalVotes,  setTotalVotes]  = useState(0);
-  const [view,        setView]        = useState<'equipes'|'classement'|'coachs'>('equipes');
-  const [animKey,     setAnimKey]     = useState(0);
+  const [team1Data, setTeam1Data] = useState<TeamData>({
+    players: Array(5).fill(null).map((_,i)=>makePlaceholder(i+1)),
+    coaches: {headCoach:null,assistantCoach:null},
+  });
+  const [team2Data, setTeam2Data] = useState<TeamData>({
+    players: Array(5).fill(null).map((_,i)=>makePlaceholder(i+1)),
+    coaches: {headCoach:null,assistantCoach:null},
+  });
+  const [t1Scores,   setT1Scores]   = useState<PlayerScore[]>([]);
+  const [t2Scores,   setT2Scores]   = useState<PlayerScore[]>([]);
+  const [t1CoachList,setT1CoachList] = useState<CoachScore[]>([]);
+  const [t2CoachList,setT2CoachList] = useState<CoachScore[]>([]);
+  const [loading,    setLoading]    = useState(true);
+  const [totalVotes, setTotalVotes] = useState(0);
+  const [view,       setView]       = useState<'equipes'|'classement'|'coachs'>('equipes');
+  const [animKey,    setAnimKey]    = useState(0);
 
   const fetchResults = useCallback(async () => {
     const [{ data: players }, { data: coaches }, { data: votes }] = await Promise.all([
       supabase.from('players').select('*').eq('is_active', true),
       supabase.from('coaches').select('*').eq('is_active', true),
-      supabase.from('votes').select('player_1_id,player_2_id,player_3_id,player_4_id,player_5_id,bonus_player_id,player_6_id,player_7_id,player_8_id,player_9_id,player_10_id,bonus_player_2_id,head_coach_id,assistant_coach_id,head_coach_2_id,assistant_coach_2_id'),
+      supabase.from('votes').select(
+        'player_1_id,player_2_id,player_3_id,player_4_id,player_5_id,' +
+        'player_6_id,player_7_id,player_8_id,player_9_id,player_10_id,' +
+        'head_coach_id,assistant_coach_id,head_coach_2_id,assistant_coach_2_id'
+      ),
     ]);
     if (!players || !votes) return;
 
-    /* ── Comptage votes joueurs ── */
+    /* ── Comptage votes joueurs (sans bonus) ── */
     const voteCount: Record<string,number> = {};
-    const bonusCount: Record<string,number> = {};
-    players.forEach(p => { voteCount[p.id]=0; bonusCount[p.id]=0; });
-
+    players.forEach(p => { voteCount[p.id] = 0; });
     votes.forEach(v => {
-      // E1 : slots 1-5
-      [v.player_1_id,v.player_2_id,v.player_3_id,v.player_4_id,v.player_5_id].forEach(id => { if (id&&voteCount[id]!==undefined) voteCount[id]++; });
-      if (v.bonus_player_id && bonusCount[v.bonus_player_id]!==undefined) bonusCount[v.bonus_player_id]++;
-      // E2 : slots 6-10
-      [v.player_6_id,v.player_7_id,v.player_8_id,v.player_9_id,v.player_10_id].forEach(id => { if (id&&voteCount[id]!==undefined) voteCount[id]++; });
-      if (v.bonus_player_2_id && bonusCount[v.bonus_player_2_id]!==undefined) bonusCount[v.bonus_player_2_id]++;
+      [v.player_1_id,v.player_2_id,v.player_3_id,v.player_4_id,v.player_5_id].forEach(id => {
+        if (id && voteCount[id] !== undefined) voteCount[id]++;
+      });
+      [v.player_6_id,v.player_7_id,v.player_8_id,v.player_9_id,v.player_10_id].forEach(id => {
+        if (id && voteCount[id] !== undefined) voteCount[id]++;
+      });
     });
 
-    const allSorted: PlayerScore[] = players
-      .map(p => ({ player: p, votes: voteCount[p.id]||0, bonuses: bonusCount[p.id]||0 }))
-      .sort((a,b) => b.votes-a.votes || b.bonuses-a.bonuses);
-    setAllScores(allSorted);
     setTotalVotes(votes.length);
 
-    // Top 5 par équipe (triés par votes)
-    const t1Top5 = padTeam(allSorted.filter(s=>s.player.team===1).slice(0,5));
-    const t2Top5 = padTeam(allSorted.filter(s=>s.player.team===2).slice(0,5));
+    /* ── Scores par équipe triés ── */
+    const makeScores = (team: number) =>
+      players
+        .filter(p => p.team === team)
+        .map(p => ({ player: p, votes: voteCount[p.id] || 0 }))
+        .sort((a,b) => b.votes - a.votes);
 
-    const bonusLeader = (arr: PlayerScore[]) => {
-      const real = arr.filter(s => !s.isPlaceholder && s.bonuses>0);
-      if (!real.length) return null;
-      return real.reduce((a,b)=>a.bonuses>b.bonuses?a:b).player.id;
-    };
+    const s1 = makeScores(1);
+    const s2 = makeScores(2);
+    setT1Scores(s1);
+    setT2Scores(s2);
 
-    /* ── Comptage votes coachs ── */
+    const t1Top5 = padTeam(s1.slice(0,5));
+    const t2Top5 = padTeam(s2.slice(0,5));
+
+    /* ── Comptage votes coachs avec pondération ── */
     if (coaches && coaches.length > 0) {
-      const hc1: Record<string,number>={}, ac1: Record<string,number>={};
-      const hc2: Record<string,number>={}, ac2: Record<string,number>={};
+      const hc1: Record<string,number> = {}, ac1: Record<string,number> = {};
+      const hc2: Record<string,number> = {}, ac2: Record<string,number> = {};
       coaches.forEach(c => { hc1[c.id]=0; ac1[c.id]=0; hc2[c.id]=0; ac2[c.id]=0; });
 
       votes.forEach(v => {
-        if (v.head_coach_id       && hc1[v.head_coach_id]!==undefined)       hc1[v.head_coach_id]++;
-        if (v.assistant_coach_id  && ac1[v.assistant_coach_id]!==undefined)   ac1[v.assistant_coach_id]++;
-        if (v.head_coach_2_id     && hc2[v.head_coach_2_id]!==undefined)     hc2[v.head_coach_2_id]++;
+        if (v.head_coach_id        && hc1[v.head_coach_id]       !==undefined) hc1[v.head_coach_id]++;
+        if (v.assistant_coach_id   && ac1[v.assistant_coach_id]  !==undefined) ac1[v.assistant_coach_id]++;
+        if (v.head_coach_2_id      && hc2[v.head_coach_2_id]     !==undefined) hc2[v.head_coach_2_id]++;
         if (v.assistant_coach_2_id && ac2[v.assistant_coach_2_id]!==undefined) ac2[v.assistant_coach_2_id]++;
       });
 
-      const buildCoachScore = (c: Coach, hMap: Record<string,number>, aMap: Record<string,number>): CoachScore => ({
-        coach: c, headVotes: hMap[c.id]||0, assistantVotes: aMap[c.id]||0, total: (hMap[c.id]||0)+(aMap[c.id]||0),
+      /* total = headVotes × 1.5 + assistantVotes × 1 */
+      const buildScore = (c: Coach, hMap: Record<string,number>, aMap: Record<string,number>): CoachScore => ({
+        coach: c,
+        headVotes:      hMap[c.id] || 0,
+        assistantVotes: aMap[c.id] || 0,
+        total: (hMap[c.id]||0) * HEAD_WEIGHT + (aMap[c.id]||0) * ASST_WEIGHT,
       });
 
-      // Coachs équipe 1
-      const c1 = coaches.filter(c=>c.team===1).map(c=>buildCoachScore(c,hc1,ac1)).sort((a,b)=>b.total-a.total);
-      // Coachs équipe 2
-      const c2 = coaches.filter(c=>c.team===2).map(c=>buildCoachScore(c,hc2,ac2)).sort((a,b)=>b.total-a.total);
-
+      const c1 = coaches.filter(c=>c.team===1).map(c=>buildScore(c,hc1,ac1)).sort((a,b)=>b.total-a.total);
+      const c2 = coaches.filter(c=>c.team===2).map(c=>buildScore(c,hc2,ac2)).sort((a,b)=>b.total-a.total);
       setT1CoachList(c1);
       setT2CoachList(c2);
 
-      // Head/assistant par équipe : 1er par headVotes = principal, 1er par assistantVotes parmi restants = adjoint
       const pickCoaches = (list: CoachScore[]): TeamCoaches => {
         const assigned = new Set<string>();
-        const pickBest = (sorted: CoachScore[]) => { const f=sorted.find(c=>!assigned.has(c.coach.id)); if(f)assigned.add(f.coach.id); return f??null; };
+        const pickBest = (sorted: CoachScore[]) => {
+          const f = sorted.find(c => !assigned.has(c.coach.id));
+          if (f) assigned.add(f.coach.id);
+          return f ?? null;
+        };
         const byHead = [...list].sort((a,b)=>b.headVotes-a.headVotes);
         const byAsst = [...list].sort((a,b)=>b.assistantVotes-a.assistantVotes);
         return { headCoach: pickBest(byHead), assistantCoach: pickBest(byAsst) };
       };
 
-      setTeam1Data({ players: t1Top5, coaches: pickCoaches(c1), bonusLeaderId: bonusLeader(t1Top5) });
-      setTeam2Data({ players: t2Top5, coaches: pickCoaches(c2), bonusLeaderId: bonusLeader(t2Top5) });
+      setTeam1Data({ players: t1Top5, coaches: pickCoaches(c1) });
+      setTeam2Data({ players: t2Top5, coaches: pickCoaches(c2) });
     } else {
-      setTeam1Data({ players: t1Top5, coaches:{headCoach:null,assistantCoach:null}, bonusLeaderId: bonusLeader(t1Top5) });
-      setTeam2Data({ players: t2Top5, coaches:{headCoach:null,assistantCoach:null}, bonusLeaderId: bonusLeader(t2Top5) });
+      setTeam1Data({ players: t1Top5, coaches:{headCoach:null,assistantCoach:null} });
+      setTeam2Data({ players: t2Top5, coaches:{headCoach:null,assistantCoach:null} });
     }
 
     setLoading(false);
@@ -373,7 +403,8 @@ export default function ResultatsPage() {
     return () => { supabase.removeChannel(ch); };
   }, [fetchResults]);
 
-  const maxVotes = allScores[0]?.votes || 1;
+  const maxT1 = t1Scores[0]?.votes || 1;
+  const maxT2 = t2Scores[0]?.votes || 1;
   const hasCoaches = t1CoachList.length > 0 || t2CoachList.length > 0;
 
   if (loading) return (
@@ -401,7 +432,7 @@ export default function ResultatsPage() {
         {/* Tabs */}
         <div className="flex rounded-xl p-1 gap-1" style={{background:'rgba(255,255,255,0.04)',border:'1px solid rgba(255,255,255,0.06)'}}>
           {[
-            {id:'equipes',label:'🏀 Équipes'},
+            {id:'equipes',   label:'🏀 Équipes'},
             {id:'classement',label:'📊 Joueurs'},
             ...(hasCoaches?[{id:'coachs',label:'🧑‍💼 Coachs'}]:[]),
           ].map(v => (
@@ -429,19 +460,42 @@ export default function ResultatsPage() {
           </div>
         )}
 
-        {/* ── Vue Classement joueurs ── */}
+        {/* ── Vue Classement joueurs — deux classements séparés ── */}
         {view==='classement' && (
-          <div className="flex flex-col gap-2">
-            <p className="text-center text-[#E8651A] font-black text-[10px] uppercase tracking-[0.25em] mb-1">
-              Classement général · {allScores.length} joueurs
-            </p>
-            {allScores.map((s,i) => <PlayerRow key={s.player.id} score={s} rank={i+1} maxVotes={maxVotes}/>)}
+          <div className="flex flex-col gap-6">
+            {[
+              {label:'ÉQUIPE 1', color:'#E8651A', scores:t1Scores, max:maxT1},
+              {label:'ÉQUIPE 2', color:'#3B9EF0', scores:t2Scores, max:maxT2},
+            ].map(({label,color,scores,max}) => (
+              <div key={label} className="flex flex-col gap-2">
+                {/* Séparateur équipe */}
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-px" style={{background:`${color}35`}}/>
+                  <div className="flex items-center gap-2 px-3 py-1 rounded-full" style={{background:`${color}15`,border:`1px solid ${color}40`}}>
+                    <div className="w-2 h-2 rounded-full" style={{background:color,boxShadow:`0 0 5px ${color}`}}/>
+                    <span style={{fontFamily:'Bebas Neue,sans-serif',color,fontSize:12,letterSpacing:'0.15em'}}>{label}</span>
+                    <span className="text-white/30 text-[10px]">· {scores.length} joueur{scores.length!==1?'s':''}</span>
+                  </div>
+                  <div className="flex-1 h-px" style={{background:`${color}35`}}/>
+                </div>
+                {scores.length === 0
+                  ? <p className="text-white/25 text-xs italic text-center py-4">Aucun joueur assigné</p>
+                  : scores.map((s,i) => (
+                    <PlayerRow key={s.player.id} score={s} rank={i+1} maxVotes={max} teamColor={color}/>
+                  ))
+                }
+              </div>
+            ))}
           </div>
         )}
 
         {/* ── Vue Coachs ── */}
         {view==='coachs' && (
           <div className="flex flex-col gap-4">
+            <div className="bg-[#0A0A0A] border border-[#1E1E1E] rounded-xl p-3 flex items-center gap-2">
+              <span className="text-[#E8651A] text-sm">⚖️</span>
+              <span className="text-white/40 text-xs">Pondération · Coach principal = <span className="text-[#E8651A] font-bold">1.5 pts</span> · Coach adjoint = <span className="text-[#3B9EF0] font-bold">1 pt</span></span>
+            </div>
             {[
               {label:'ÉQUIPE 1',color:'#E8651A',list:t1CoachList},
               {label:'ÉQUIPE 2',color:'#3B9EF0',list:t2CoachList},
@@ -454,7 +508,9 @@ export default function ResultatsPage() {
                 </div>
                 {list.length === 0
                   ? <p className="text-white/25 text-xs italic text-center py-2">Aucun vote</p>
-                  : list.map((cs,i) => <CoachRow key={cs.coach.id} cs={cs} rank={i+1} maxTotal={list[0]?.total||1} teamColor={color}/>)
+                  : list.map((cs,i) => (
+                    <CoachRow key={cs.coach.id} cs={cs} rank={i+1} maxTotal={list[0]?.total||1} teamColor={color}/>
+                  ))
                 }
               </div>
             ))}
