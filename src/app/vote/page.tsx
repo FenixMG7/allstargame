@@ -76,8 +76,11 @@ function PlayerCard({ player, selected, canSelect, teamColor, onClick }: {
         </div>
       )}
       <div className="absolute top-2 left-2 w-7 h-7 rounded-full bg-[#1E1E1E] flex items-center justify-center z-10">
-<span style={{fontFamily:'Bebas Neue,sans-serif', color: teamColor}} className="...">
-      </div>
+     <span 
+    style={{fontFamily:'Bebas Neue,sans-serif', color: teamColor}} 
+    className="text-sm font-bold"
+      />
+    </div>
       <div className="relative mt-3 w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden bg-[#1E1E1E] flex items-center justify-center">
         {player.photo_url
           ? <img src={player.photo_url} alt={player.last_name} className="w-full h-full object-cover object-top" />
