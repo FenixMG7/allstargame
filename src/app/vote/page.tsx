@@ -488,7 +488,7 @@ export default function VotePage() {
           </>
         )}
 
-        {/* ─ E2 head coach ─ */
+        {/* ─ E2 head coach ─ */}
         {step === 't2_headcoach' && (
           <>
             <div className="mb-8 p-5 rounded-2xl border flex gap-4 items-start" style={{borderColor:'rgba(59,158,240,0.3)',background:'rgba(59,158,240,0.05)'}}>
