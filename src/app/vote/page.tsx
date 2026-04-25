@@ -30,7 +30,6 @@ function RulesModal({ onAccept }: { onAccept: () => void }) {
         <div className="px-6 py-5 flex flex-col gap-4">
           {[
             { icon: '🏀', title: '5 joueurs par équipe', desc: 'Sélectionnez 5 joueurs dans l\'Équipe 1, puis 5 dans l\'Équipe 2.' },
-            { icon: '⭐', title: 'Le Superstar Bonus', desc: 'Par équipe, attribuez un bonus au joueur le plus méritant parmi vos 5.' },
             { icon: '🧑‍💼', title: 'Coachs par équipe', desc: 'Votez pour un coach principal et un adjoint pour chaque équipe.' },
             { icon: '🔒', title: 'Vote unique', desc: 'Votre code ne peut être utilisé qu\'une seule fois. Le vote est définitif.' },
             { icon: '🏆', title: 'Résultats', desc: 'Les 5 joueurs les plus votés par équipe formeront les 5 majeurs !' },
@@ -57,24 +56,19 @@ function RulesModal({ onAccept }: { onAccept: () => void }) {
 }
 
 /* ─── Carte joueur ───────────────────────────── */
-function PlayerCard({ player, selected, isBonus, canSelect, teamColor, onClick }: {
-  player: Player; selected: boolean; isBonus: boolean; canSelect: boolean; teamColor: string; onClick: () => void;
+function PlayerCard({ player, selected, canSelect, teamColor, onClick }: {
+  player: Player; selected: boolean; canSelect: boolean; teamColor: string; onClick: () => void;
 }) {
-  const borderColor = isBonus ? '#FFD700' : selected ? teamColor : '#1E1E1E';
-  const bg = isBonus ? 'rgba(255,215,0,0.05)' : selected ? `${teamColor}1a` : '#141414';
-  const shadow = isBonus ? `0 0 0 2px #FFD700, 0 0 30px rgba(255,215,0,0.3)` : selected ? `0 0 0 2px ${teamColor}, 0 0 20px ${teamColor}50` : 'none';
+  const borderColor = selected ? teamColor : '#1E1E1E';
+  const bg = selected ? `${teamColor}1a` : '#141414';
+  const shadow = selected ? `0 0 0 2px ${teamColor}, 0 0 20px ${teamColor}50` : 'none';
   return (
     <button onClick={onClick} disabled={!canSelect && !selected}
       className="group relative flex flex-col items-center gap-2 p-3 rounded-2xl border transition-all duration-300"
       style={{ borderColor, background: bg, boxShadow: shadow,
         opacity: (!canSelect && !selected) ? 0.4 : 1,
         cursor: (!canSelect && !selected) ? 'not-allowed' : 'pointer' }}>
-      {isBonus && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-black text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider z-10 whitespace-nowrap" style={{background:'#FFD700'}}>
-          ⭐ BONUS
-        </div>
-      )}
-      {selected && !isBonus && (
+      {selected && (
         <div className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center z-10" style={{background: teamColor}}>
           <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
@@ -82,12 +76,7 @@ function PlayerCard({ player, selected, isBonus, canSelect, teamColor, onClick }
         </div>
       )}
       <div className="absolute top-2 left-2 w-7 h-7 rounded-full bg-[#1E1E1E] flex items-center justify-center z-10">
-        <span 
-  style={{ fontFamily: 'Bebas Neue,sans-serif', color: teamColor }} 
-  className="text-sm leading-none"
->
-  {player.number}
-</span>
+        <span style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-sm leading-none" style2={{color: teamColor}}>{player.number}</span>
       </div>
       <div className="relative mt-3 w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden bg-[#1E1E1E] flex items-center justify-center">
         {player.photo_url
@@ -96,10 +85,10 @@ function PlayerCard({ player, selected, isBonus, canSelect, teamColor, onClick }
         }
       </div>
       <div className="flex flex-col items-center gap-0.5 text-center">
-        <span style={{fontFamily:'Bebas Neue,sans-serif', color: isBonus ? '#FFD700' : selected ? teamColor : 'white'}} className="text-base sm:text-lg leading-tight">
+        <span style={{fontFamily:'Bebas Neue,sans-serif', color: selected ? teamColor : 'white'}} className="text-base sm:text-lg leading-tight">
           {player.first_name.toUpperCase()}
         </span>
-        <span style={{fontFamily:'Bebas Neue,sans-serif', color: isBonus ? '#FFD700' : selected ? teamColor : 'white'}} className="text-base sm:text-lg leading-tight">
+        <span style={{fontFamily:'Bebas Neue,sans-serif', color: selected ? teamColor : 'white'}} className="text-base sm:text-lg leading-tight">
           {player.last_name.toUpperCase()}
         </span>
         <span className="text-xs text-white/40 mt-0.5">{player.position}</span>
@@ -148,14 +137,14 @@ function CoachCard({ coach, selected, role, teamColor, onClick }: {
 }
 
 /* ─── Modal confirmation ─────────────────────── */
-function ConfirmModal({ t1Players, t1Bonus, t1Head, t1Asst, t2Players, t2Bonus, t2Head, t2Asst, onConfirm, onCancel, loading }: {
-  t1Players: Player[]; t1Bonus: Player; t1Head: Coach; t1Asst: Coach;
-  t2Players: Player[]; t2Bonus: Player; t2Head: Coach; t2Asst: Coach;
+function ConfirmModal({ t1Players, t1Head, t1Asst, t2Players, t2Head, t2Asst, onConfirm, onCancel, loading }: {
+  t1Players: Player[]; t1Head: Coach; t1Asst: Coach;
+  t2Players: Player[]; t2Head: Coach; t2Asst: Coach;
   onConfirm: () => void; onCancel: () => void; loading: boolean;
 }) {
-  const TeamSection = ({ label, color, players, bonus, head, asst }: {
+  const TeamSection = ({ label, color, players, head, asst }: {
     label: string; color: string;
-    players: Player[]; bonus: Player; head: Coach; asst: Coach;
+    players: Player[]; head: Coach; asst: Coach;
   }) => (
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-2">
@@ -163,14 +152,12 @@ function ConfirmModal({ t1Players, t1Bonus, t1Head, t1Asst, t2Players, t2Bonus, 
         <p style={{fontFamily:'Bebas Neue,sans-serif', color, fontSize:13, letterSpacing:'0.1em'}}>{label}</p>
       </div>
       {players.map((p, i) => (
-        <div key={p.id} className="flex items-center gap-2 p-2 rounded-lg border"
-          style={{borderColor: p.id === bonus.id ? '#FFD700' : '#1E1E1E', background: p.id === bonus.id ? 'rgba(255,215,0,0.05)' : '#0A0A0A'}}>
+        <div key={p.id} className="flex items-center gap-2 p-2 rounded-lg border border-[#1E1E1E] bg-[#0A0A0A]">
           <span style={{fontFamily:'Bebas Neue,sans-serif', color}} className="text-base w-4 text-center">{i+1}</span>
           <div className="w-7 h-7 rounded-full overflow-hidden bg-[#1E1E1E] flex-shrink-0 flex items-center justify-center">
             {p.photo_url ? <img src={p.photo_url} alt="" className="w-full h-full object-cover"/> : <span style={{fontFamily:'Bebas Neue,sans-serif',color,fontSize:10}}>{p.first_name[0]}</span>}
           </div>
           <span className="flex-1 font-semibold text-white text-xs">{p.first_name} {p.last_name} <span className="text-white/30">#{p.number}</span></span>
-          {p.id === bonus.id && <span className="text-[10px] font-bold text-black px-1.5 py-0.5 rounded-full" style={{background:'#FFD700'}}>⭐</span>}
         </div>
       ))}
       {[{c:head,r:'🧑‍💼 Principal'},{c:asst,r:'👨‍💼 Adjoint'}].map(({c,r}) => (
@@ -192,9 +179,9 @@ function ConfirmModal({ t1Players, t1Bonus, t1Head, t1Asst, t2Players, t2Bonus, 
           <h2 style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-3xl text-white">Confirmer votre vote</h2>
           <p className="text-white/50 text-sm mt-1">Ce vote est définitif et ne pourra pas être modifié.</p>
         </div>
-        <TeamSection label="ÉQUIPE 1" color="#E8651A" players={t1Players} bonus={t1Bonus} head={t1Head} asst={t1Asst} />
+        <TeamSection label="ÉQUIPE 1" color="#E8651A" players={t1Players} head={t1Head} asst={t1Asst} />
         <div className="h-px bg-[#1E1E1E]" />
-        <TeamSection label="ÉQUIPE 2" color="#3B9EF0" players={t2Players} bonus={t2Bonus} head={t2Head} asst={t2Asst} />
+        <TeamSection label="ÉQUIPE 2" color="#3B9EF0" players={t2Players} head={t2Head} asst={t2Asst} />
         <div className="flex gap-3">
           <button onClick={onCancel} className="flex-1 py-3 rounded-xl border border-[#1E1E1E] text-white/60 hover:text-white font-semibold transition-all">Modifier</button>
           <button onClick={onConfirm} disabled={loading}
@@ -210,8 +197,8 @@ function ConfirmModal({ t1Players, t1Bonus, t1Head, t1Asst, t2Players, t2Bonus, 
 
 /* ─── Page principale vote ───────────────────── */
 type Step =
-  | 't1_select' | 't1_bonus' | 't1_headcoach' | 't1_assistantcoach'
-  | 't2_select' | 't2_bonus' | 't2_headcoach' | 't2_assistantcoach';
+  | 't1_select' | 't1_headcoach' | 't1_assistantcoach'
+  | 't2_select' | 't2_headcoach' | 't2_assistantcoach';
 
 export default function VotePage() {
   const router = useRouter();
@@ -224,13 +211,11 @@ export default function VotePage() {
 
   // Sélections E1
   const [t1SelectedIds, setT1SelectedIds] = useState<string[]>([]);
-  const [t1BonusId, setT1BonusId] = useState<string | null>(null);
   const [t1HeadId, setT1HeadId] = useState<string | null>(null);
   const [t1AsstId, setT1AsstId] = useState<string | null>(null);
 
   // Sélections E2
   const [t2SelectedIds, setT2SelectedIds] = useState<string[]>([]);
-  const [t2BonusId, setT2BonusId] = useState<string | null>(null);
   const [t2HeadId, setT2HeadId] = useState<string | null>(null);
   const [t2AsstId, setT2AsstId] = useState<string | null>(null);
 
@@ -277,16 +262,15 @@ export default function VotePage() {
       p_player_3: allPlayerIds[2],
       p_player_4: allPlayerIds[3],
       p_player_5: allPlayerIds[4],
-      p_bonus_player: t1BonusId,        // bonus E1 (champ existant)
-      p_head_coach: t1HeadId,           // head E1
-      p_assistant_coach: t1AsstId,      // asst E1
-      // E2 dans les champs étendus (voir note schema)
+      p_bonus_player: null,
+      p_head_coach: t1HeadId,
+      p_assistant_coach: t1AsstId,
       p_player_6: allPlayerIds[5],
       p_player_7: allPlayerIds[6],
       p_player_8: allPlayerIds[7],
       p_player_9: allPlayerIds[8],
       p_player_10: allPlayerIds[9],
-      p_bonus_player_2: t2BonusId,
+      p_bonus_player_2: null,
       p_head_coach_2: t2HeadId,
       p_assistant_coach_2: t2AsstId,
     });
@@ -299,11 +283,9 @@ export default function VotePage() {
     const t2Selected = t2Players.filter(p => t2SelectedIds.includes(p.id));
     const result = {
       t1Players: t1Selected,
-      t1Bonus: t1Players.find(p => p.id === t1BonusId)!,
       t1HeadCoach: t1Coaches.find(c => c.id === t1HeadId)!,
       t1AssistantCoach: t1Coaches.find(c => c.id === t1AsstId)!,
       t2Players: t2Selected,
-      t2Bonus: t2Players.find(p => p.id === t2BonusId)!,
       t2HeadCoach: t2Coaches.find(c => c.id === t2HeadId)!,
       t2AssistantCoach: t2Coaches.find(c => c.id === t2AsstId)!,
     };
@@ -316,7 +298,7 @@ export default function VotePage() {
   const t2Selected = t2Players.filter(p => t2SelectedIds.includes(p.id));
 
   // Étapes & labels
-  const STEPS: Step[] = ['t1_select','t1_bonus','t1_headcoach','t1_assistantcoach','t2_select','t2_bonus','t2_headcoach','t2_assistantcoach'];
+  const STEPS: Step[] = ['t1_select','t1_headcoach','t1_assistantcoach','t2_select','t2_headcoach','t2_assistantcoach'];
   const currentIdx = STEPS.indexOf(step);
 
   const isT1 = step.startsWith('t1');
@@ -325,11 +307,9 @@ export default function VotePage() {
 
   const stepMeta: Record<Step, { title: string; sub: string }> = {
     t1_select:        { title: 'ÉQUIPE 1 — 5 JOUEURS',     sub: 'Sélectionnez exactement 5 joueurs' },
-    t1_bonus:         { title: 'ÉQUIPE 1 — BONUS',          sub: 'Quel joueur mérite le bonus ?' },
     t1_headcoach:     { title: 'ÉQUIPE 1 — COACH PRINCIPAL', sub: 'Choisissez le coach principal' },
     t1_assistantcoach:{ title: 'ÉQUIPE 1 — COACH ADJOINT',   sub: 'Choisissez le coach adjoint' },
     t2_select:        { title: 'ÉQUIPE 2 — 5 JOUEURS',     sub: 'Sélectionnez exactement 5 joueurs' },
-    t2_bonus:         { title: 'ÉQUIPE 2 — BONUS',          sub: 'Quel joueur mérite le bonus ?' },
     t2_headcoach:     { title: 'ÉQUIPE 2 — COACH PRINCIPAL', sub: 'Choisissez le coach principal' },
     t2_assistantcoach:{ title: 'ÉQUIPE 2 — COACH ADJOINT',   sub: 'Choisissez le coach adjoint' },
   };
@@ -341,21 +321,17 @@ export default function VotePage() {
   // Bouton suivant
   const canProceed =
     (step === 't1_select'         && t1SelectedIds.length === MAX_PLAYERS) ||
-    (step === 't1_bonus'          && !!t1BonusId) ||
     (step === 't1_headcoach'      && !!t1HeadId) ||
     (step === 't1_assistantcoach' && !!t1AsstId) ||
     (step === 't2_select'         && t2SelectedIds.length === MAX_PLAYERS) ||
-    (step === 't2_bonus'          && !!t2BonusId) ||
     (step === 't2_headcoach'      && !!t2HeadId) ||
     (step === 't2_assistantcoach' && !!t2AsstId);
 
   const nextLabel = () => {
-    if (step === 't1_select')         return t1SelectedIds.length === MAX_PLAYERS ? 'CHOISIR LE BONUS →' : `Sélectionnez encore ${MAX_PLAYERS - t1SelectedIds.length} joueur${MAX_PLAYERS - t1SelectedIds.length > 1 ? 's' : ''}`;
-    if (step === 't1_bonus')          return 'CHOISIR LE COACH →';
+    if (step === 't1_select')         return t1SelectedIds.length === MAX_PLAYERS ? 'CHOISIR LE COACH →' : `Sélectionnez encore ${MAX_PLAYERS - t1SelectedIds.length} joueur${MAX_PLAYERS - t1SelectedIds.length > 1 ? 's' : ''}`;
     if (step === 't1_headcoach')      return 'CHOISIR LE COACH ADJOINT →';
     if (step === 't1_assistantcoach') return 'PASSER À L\'ÉQUIPE 2 →';
-    if (step === 't2_select')         return t2SelectedIds.length === MAX_PLAYERS ? 'CHOISIR LE BONUS →' : `Sélectionnez encore ${MAX_PLAYERS - t2SelectedIds.length} joueur${MAX_PLAYERS - t2SelectedIds.length > 1 ? 's' : ''}`;
-    if (step === 't2_bonus')          return 'CHOISIR LE COACH →';
+    if (step === 't2_select')         return t2SelectedIds.length === MAX_PLAYERS ? 'CHOISIR LE COACH →' : `Sélectionnez encore ${MAX_PLAYERS - t2SelectedIds.length} joueur${MAX_PLAYERS - t2SelectedIds.length > 1 ? 's' : ''}`;
     if (step === 't2_headcoach')      return 'CHOISIR LE COACH ADJOINT →';
     if (step === 't2_assistantcoach') return '✅ VALIDER MON VOTE';
     return '';
@@ -368,8 +344,8 @@ export default function VotePage() {
   }
 
   const allReady =
-    t1SelectedIds.length === 5 && t1BonusId && t1HeadId && t1AsstId &&
-    t2SelectedIds.length === 5 && t2BonusId && t2HeadId && t2AsstId;
+    t1SelectedIds.length === 5 && t1HeadId && t1AsstId &&
+    t2SelectedIds.length === 5 && t2HeadId && t2AsstId;
 
   if (loadingData) return (
     <div className="min-h-screen flex items-center justify-center">
@@ -398,7 +374,7 @@ export default function VotePage() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <span style={{fontFamily:'Bebas Neue,sans-serif', color: teamColor}} className="text-lg">{currentIdx + 1}/8</span>
+              <span style={{fontFamily:'Bebas Neue,sans-serif', color: teamColor}} className="text-lg">{currentIdx + 1}/6</span>
               {currentIdx > 0 && (
                 <button onClick={goBack} className="text-sm text-white/50 hover:text-[#E8651A] transition-colors">← Retour</button>
               )}
@@ -444,34 +420,14 @@ export default function VotePage() {
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 sm:gap-4">
             {t1Players.map(player => (
               <PlayerCard key={player.id} player={player} teamColor="#E8651A"
-                selected={t1SelectedIds.includes(player.id)} isBonus={false}
+                selected={t1SelectedIds.includes(player.id)}
                 canSelect={t1SelectedIds.length < MAX_PLAYERS || t1SelectedIds.includes(player.id)}
                 onClick={() => togglePlayer(1, player.id)} />
             ))}
           </div>
         )}
 
-        {/* ─ E1 bonus ─ */}
-        {step === 't1_bonus' && (
-          <>
-            <div className="mb-8 p-5 rounded-2xl border flex gap-4 items-start" style={{borderColor:'rgba(255,215,0,0.3)',background:'rgba(255,215,0,0.03)'}}>
-              <span className="text-3xl">⭐</span>
-              <div>
-                <h3 style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-xl text-[#FFD700]">Superstar Bonus — Équipe 1</h3>
-                <p className="text-white/60 text-sm mt-1">Parmi vos 5 joueurs de l&apos;Équipe 1, lequel mérite le bonus ?</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
-              {t1Selected.map(player => (
-                <PlayerCard key={player.id} player={player} teamColor="#E8651A" selected canSelect
-                  isBonus={t1BonusId === player.id}
-                  onClick={() => setT1BonusId(prev => prev === player.id ? null : player.id)} />
-              ))}
-            </div>
-          </>
-        )}
-
-        {/* ─ E1 head coach ─ */}
+        {/* ─ E1 head coach ─ */
         {step === 't1_headcoach' && (
           <>
             <div className="mb-8 p-5 rounded-2xl border flex gap-4 items-start" style={{borderColor:'rgba(232,101,26,0.3)',background:'rgba(232,101,26,0.03)'}}>
@@ -524,7 +480,7 @@ export default function VotePage() {
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 sm:gap-4">
               {t2Players.map(player => (
                 <PlayerCard key={player.id} player={player} teamColor="#3B9EF0"
-                  selected={t2SelectedIds.includes(player.id)} isBonus={false}
+                  selected={t2SelectedIds.includes(player.id)}
                   canSelect={t2SelectedIds.length < MAX_PLAYERS || t2SelectedIds.includes(player.id)}
                   onClick={() => togglePlayer(2, player.id)} />
               ))}
@@ -532,27 +488,7 @@ export default function VotePage() {
           </>
         )}
 
-        {/* ─ E2 bonus ─ */}
-        {step === 't2_bonus' && (
-          <>
-            <div className="mb-8 p-5 rounded-2xl border flex gap-4 items-start" style={{borderColor:'rgba(255,215,0,0.3)',background:'rgba(255,215,0,0.03)'}}>
-              <span className="text-3xl">⭐</span>
-              <div>
-                <h3 style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-xl text-[#FFD700]">Superstar Bonus — Équipe 2</h3>
-                <p className="text-white/60 text-sm mt-1">Parmi vos 5 joueurs de l&apos;Équipe 2, lequel mérite le bonus ?</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-4">
-              {t2Selected.map(player => (
-                <PlayerCard key={player.id} player={player} teamColor="#3B9EF0" selected canSelect
-                  isBonus={t2BonusId === player.id}
-                  onClick={() => setT2BonusId(prev => prev === player.id ? null : player.id)} />
-              ))}
-            </div>
-          </>
-        )}
-
-        {/* ─ E2 head coach ─ */}
+        {/* ─ E2 head coach ─ */
         {step === 't2_headcoach' && (
           <>
             <div className="mb-8 p-5 rounded-2xl border flex gap-4 items-start" style={{borderColor:'rgba(59,158,240,0.3)',background:'rgba(59,158,240,0.05)'}}>
@@ -616,11 +552,9 @@ export default function VotePage() {
       {showConfirm && allReady && (
         <ConfirmModal
           t1Players={t1Selected}
-          t1Bonus={t1Players.find(p => p.id === t1BonusId)!}
           t1Head={t1Coaches.find(c => c.id === t1HeadId)!}
           t1Asst={t1Coaches.find(c => c.id === t1AsstId)!}
           t2Players={t2Selected}
-          t2Bonus={t2Players.find(p => p.id === t2BonusId)!}
           t2Head={t2Coaches.find(c => c.id === t2HeadId)!}
           t2Asst={t2Coaches.find(c => c.id === t2AsstId)!}
           onConfirm={submitVote}
