@@ -76,7 +76,7 @@ function PlayerCard({ player, selected, canSelect, teamColor, onClick }: {
         </div>
       )}
       <div className="absolute top-2 left-2 w-7 h-7 rounded-full bg-[#1E1E1E] flex items-center justify-center z-10">
-        <span style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-sm leading-none" style2={{color: teamColor}}>{player.number}</span>
+          <span style={{fontFamily:'Bebas Neue,sans-serif', color: teamColor}} className="text-sm leading-none">{player.number}</span>
       </div>
       <div className="relative mt-3 w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden bg-[#1E1E1E] flex items-center justify-center">
         {player.photo_url
@@ -427,7 +427,7 @@ export default function VotePage() {
           </div>
         )}
 
-        {/* ─ E1 head coach ─ */
+        {/* ─ E1 head coach ─ */}
         {step === 't1_headcoach' && (
           <>
             <div className="mb-8 p-5 rounded-2xl border flex gap-4 items-start" style={{borderColor:'rgba(232,101,26,0.3)',background:'rgba(232,101,26,0.03)'}}>
@@ -488,7 +488,7 @@ export default function VotePage() {
           </>
         )}
 
-        {/* ─ E2 head coach ─ */
+        {/* ─ E2 head coach ─ */}
         {step === 't2_headcoach' && (
           <>
             <div className="mb-8 p-5 rounded-2xl border flex gap-4 items-start" style={{borderColor:'rgba(59,158,240,0.3)',background:'rgba(59,158,240,0.05)'}}>
