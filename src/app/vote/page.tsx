@@ -326,7 +326,23 @@ export default function ResultatsPage() {
       ),
     ]);
     if (!players || !rawVotes) return;
-    const votes = rawVotes as VoteRow[];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const votes = (rawVotes as unknown as any[]).map((v: any): VoteRow => ({
+      player_1_id: v.player_1_id ?? null,
+      player_2_id: v.player_2_id ?? null,
+      player_3_id: v.player_3_id ?? null,
+      player_4_id: v.player_4_id ?? null,
+      player_5_id: v.player_5_id ?? null,
+      player_6_id: v.player_6_id ?? null,
+      player_7_id: v.player_7_id ?? null,
+      player_8_id: v.player_8_id ?? null,
+      player_9_id: v.player_9_id ?? null,
+      player_10_id: v.player_10_id ?? null,
+      head_coach_id: v.head_coach_id ?? null,
+      assistant_coach_id: v.assistant_coach_id ?? null,
+      head_coach_2_id: v.head_coach_2_id ?? null,
+      assistant_coach_2_id: v.assistant_coach_2_id ?? null,
+    }));
 
     /* ── Comptage votes joueurs (sans bonus) ── */
     const voteCount: Record<string,number> = {};
