@@ -45,6 +45,10 @@ function CourtPlayer({ player, position, index, teamColor }: {
 }) {
   const [visible, setVisible] = useState(false);
   useEffect(()=>{const t=setTimeout(()=>setVisible(true),index*300);return()=>clearTimeout(t);},[index]);
+
+  // Numéro valide = non null, non undefined, non 0
+  const hasNumber = player.number != null && player.number !== 0;
+
   return (
     <div className="absolute -translate-x-1/2 -translate-y-1/2 flex flex-col items-center"
       style={{top:position.top,left:position.left,zIndex:10,opacity:visible?1:0,
@@ -60,10 +64,13 @@ function CourtPlayer({ player, position, index, teamColor }: {
             : <span style={{fontFamily:'Bebas Neue,sans-serif',color:teamColor}} className="text-base">{player.first_name[0]}{player.last_name[0]}</span>
           }
         </div>
-        <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center border-2 border-[#0A0A0A]"
-          style={{background:teamColor,zIndex:3}}>
-          <span style={{fontFamily:'Bebas Neue,sans-serif',color:'white',fontSize:10}}>{player.number}</span>
-        </div>
+        {/* ✅ MODIF 3 : afficher le badge numéro SEULEMENT si le joueur a un numéro */}
+        {hasNumber && (
+          <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center border-2 border-[#0A0A0A]"
+            style={{background:teamColor,zIndex:3}}>
+            <span style={{fontFamily:'Bebas Neue,sans-serif',color:'white',fontSize:10}}>{player.number}</span>
+          </div>
+        )}
       </div>
       <div className="text-center mt-3 flex flex-col items-center gap-0.5">
         <p style={{fontFamily:'Bebas Neue,sans-serif',color:'white',textShadow:'0 1px 6px rgba(0,0,0,1)',fontSize:11}} className="leading-tight">{player.last_name.toUpperCase()}</p>
@@ -74,8 +81,8 @@ function CourtPlayer({ player, position, index, teamColor }: {
 }
 
 /* ─── Terrain ─ */
-function TeamCourt({ players, teamColor, teamLabel, delayOffset }: {
-  players: Player[]; teamColor: string; teamLabel: string; delayOffset: number;
+function TeamCourt({ players, teamColor, teamLabel }: {
+  players: Player[]; teamColor: string; teamLabel: string;
 }) {
   return (
     <div className="flex flex-col gap-2">
@@ -190,7 +197,7 @@ export default function MerciPage() {
 
         {/* ── Équipe 1 ── */}
         <div className="page-enter">
-          <TeamCourt players={result.t1Players} teamColor="#E8651A" teamLabel="VOTRE ÉQUIPE 1" delayOffset={0}/>
+          <TeamCourt players={result.t1Players} teamColor="#E8651A" teamLabel="VOTRE ÉQUIPE 1"/>
           <div className="mt-3 bg-[#141414] border border-[#1E1E1E] rounded-2xl p-4">
             <div className="flex justify-around gap-4">
               <CoachCard coach={result.t1HeadCoach} role="PRINCIPAL" delay={600} teamColor="#E8651A"/>
@@ -208,7 +215,7 @@ export default function MerciPage() {
 
         {/* ── Équipe 2 ── */}
         <div className="page-enter">
-          <TeamCourt players={result.t2Players} teamColor="#3B9EF0" teamLabel="VOTRE ÉQUIPE 2" delayOffset={500}/>
+          <TeamCourt players={result.t2Players} teamColor="#3B9EF0" teamLabel="VOTRE ÉQUIPE 2"/>
           <div className="mt-3 bg-[#141414] border border-[#1E1E1E] rounded-2xl p-4">
             <div className="flex justify-around gap-4">
               <CoachCard coach={result.t2HeadCoach} role="PRINCIPAL" delay={1200} teamColor="#3B9EF0"/>
@@ -230,6 +237,7 @@ export default function MerciPage() {
               <div className="flex-1 h-px" style={{background:'rgba(232,101,26,0.3)'}}/>
             </div>
             {result.t1Players.map((player,i) => {
+              const hasNumber = player.number != null && player.number !== 0;
               return (
                 <div key={player.id} className="flex items-center gap-3 p-2.5 rounded-xl border"
                   style={{borderColor:'#1E1E1E',background:'#0A0A0A'}}>
@@ -239,7 +247,10 @@ export default function MerciPage() {
                   </div>
                   <div className="flex-1">
                     <span className="font-semibold text-sm block" style={{color:'white'}}>{player.first_name} {player.last_name}</span>
-                    <span className="text-white/40 text-xs">#{player.number} · {player.position}</span>
+                    {/* ✅ MODIF 3 : afficher le numéro uniquement si défini */}
+                    <span className="text-white/40 text-xs">
+                      {hasNumber ? `#${player.number}` : ''}{hasNumber && player.position ? ' · ' : ''}{player.position || ''}
+                    </span>
                   </div>
                 </div>
               );
@@ -261,6 +272,7 @@ export default function MerciPage() {
               <div className="flex-1 h-px" style={{background:'rgba(59,158,240,0.3)'}}/>
             </div>
             {result.t2Players.map((player,i) => {
+              const hasNumber = player.number != null && player.number !== 0;
               return (
                 <div key={player.id} className="flex items-center gap-3 p-2.5 rounded-xl border"
                   style={{borderColor:'#1E1E1E',background:'#0A0A0A'}}>
@@ -270,7 +282,10 @@ export default function MerciPage() {
                   </div>
                   <div className="flex-1">
                     <span className="font-semibold text-sm block" style={{color:'white'}}>{player.first_name} {player.last_name}</span>
-                    <span className="text-white/40 text-xs">#{player.number} · {player.position}</span>
+                    {/* ✅ MODIF 3 : afficher le numéro uniquement si défini */}
+                    <span className="text-white/40 text-xs">
+                      {hasNumber ? `#${player.number}` : ''}{hasNumber && player.position ? ' · ' : ''}{player.position || ''}
+                    </span>
                   </div>
                 </div>
               );
