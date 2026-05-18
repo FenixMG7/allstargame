@@ -19,6 +19,17 @@ interface Coach {
   team?: number | null;
 }
 
+// ✅ MODIF 5 : interface pour les scores des coachs dans l'admin
+interface CoachScore {
+  coach: Coach;
+  headVotes: number;
+  assistantVotes: number;
+  total: number;
+}
+
+const HEAD_WEIGHT = 1.5;
+const ASST_WEIGHT = 1;
+
 /* ─── Nav ─────────────────────────────────────── */
 function AdminNav({ active, onChange }: { active: string; onChange: (t: string) => void }) {
   const tabs = [
@@ -65,24 +76,41 @@ function TeamBadge({ team, onChange }: { team: number | null | undefined; onChan
   );
 }
 
-/* ─── Onglet Résultats ───────────────────────── */
+/* ─── Onglet Résultats ─────────────────────────
+   ✅ MODIF 5 : ajout section résultats coachs
+*/
 function ResultsTab() {
   const [scores, setScores] = useState<PlayerScore[]>([]);
+  const [coachScores1, setCoachScores1] = useState<CoachScore[]>([]);
+  const [coachScores2, setCoachScores2] = useState<CoachScore[]>([]);
   const [stats, setStats] = useState({ totalVotes: 0, totalCodes: 0, usedCodes: 0 });
   const [loading, setLoading] = useState(true);
 
   const fetchResults = useCallback(async () => {
     const { data: players } = await supabase.from('players').select('*').eq('is_active', true);
+    const { data: coaches } = await supabase.from('coaches').select('*').eq('is_active', true);
     if (!players) return;
-    const { data: votes } = await supabase.from('votes').select('player_1_id,player_2_id,player_3_id,player_4_id,player_5_id,bonus_player_id');
+
+    // Récupérer votes avec toutes les colonnes nécessaires
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+    const votesRes = await fetch(
+      `${supabaseUrl}/rest/v1/votes?select=player_1_id,player_2_id,player_3_id,player_4_id,player_5_id,bonus_player_id,head_coach_id,assistant_coach_id,head_coach_2_id,assistant_coach_2_id`,
+      { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
+    );
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rawVotes: any[] = await votesRes.json();
+
     const { count: totalCodes } = await supabase.from('voting_codes').select('*', { count: 'exact', head: true });
     const { count: usedCodes } = await supabase.from('voting_codes').select('*', { count: 'exact', head: true }).eq('status', 'used');
-    if (!votes) return;
 
+    if (!Array.isArray(rawVotes)) return;
+
+    // ── Scores joueurs ──
     const voteCount: Record<string, number> = {};
     const bonusCount: Record<string, number> = {};
     players.forEach(p => { voteCount[p.id] = 0; bonusCount[p.id] = 0; });
-    votes.forEach(v => {
+    rawVotes.forEach(v => {
       [v.player_1_id, v.player_2_id, v.player_3_id, v.player_4_id, v.player_5_id].forEach(id => {
         if (id && voteCount[id] !== undefined) voteCount[id]++;
       });
@@ -94,7 +122,34 @@ function ResultsTab() {
       .sort((a, b) => b.votes - a.votes || b.bonuses - a.bonuses);
 
     setScores(scored);
-    setStats({ totalVotes: votes.length, totalCodes: totalCodes || 0, usedCodes: usedCodes || 0 });
+    setStats({ totalVotes: rawVotes.length, totalCodes: totalCodes || 0, usedCodes: usedCodes || 0 });
+
+    // ── Scores coachs ──
+    if (coaches && coaches.length > 0) {
+      const hc1: Record<string,number> = {}, ac1: Record<string,number> = {};
+      const hc2: Record<string,number> = {}, ac2: Record<string,number> = {};
+      coaches.forEach(c => { hc1[c.id]=0; ac1[c.id]=0; hc2[c.id]=0; ac2[c.id]=0; });
+
+      rawVotes.forEach(v => {
+        if (v.head_coach_id        && hc1[v.head_coach_id]       !==undefined) hc1[v.head_coach_id]++;
+        if (v.assistant_coach_id   && ac1[v.assistant_coach_id]  !==undefined) ac1[v.assistant_coach_id]++;
+        if (v.head_coach_2_id      && hc2[v.head_coach_2_id]     !==undefined) hc2[v.head_coach_2_id]++;
+        if (v.assistant_coach_2_id && ac2[v.assistant_coach_2_id]!==undefined) ac2[v.assistant_coach_2_id]++;
+      });
+
+      const buildCS = (c: Coach, hMap: Record<string,number>, aMap: Record<string,number>): CoachScore => ({
+        coach: c,
+        headVotes:      hMap[c.id] || 0,
+        assistantVotes: aMap[c.id] || 0,
+        total: (hMap[c.id]||0)*HEAD_WEIGHT + (aMap[c.id]||0)*ASST_WEIGHT,
+      });
+
+      const c1 = coaches.filter(c=>c.team===1).map(c=>buildCS(c,hc1,ac1)).sort((a,b)=>b.total-a.total);
+      const c2 = coaches.filter(c=>c.team===2).map(c=>buildCS(c,hc2,ac2)).sort((a,b)=>b.total-a.total);
+      setCoachScores1(c1);
+      setCoachScores2(c2);
+    }
+
     setLoading(false);
   }, []);
 
@@ -114,6 +169,8 @@ function ResultsTab() {
 
   return (
     <div className="flex flex-col gap-6">
+
+      {/* Stats globales */}
       <div className="grid grid-cols-3 gap-4">
         {[
           { label: 'Votes exprimés', value: stats.totalVotes, icon: '🗳️' },
@@ -133,7 +190,7 @@ function ResultsTab() {
         <span className="text-xs text-white/40">Mise à jour en temps réel</span>
       </div>
 
-      {/* Top par équipe */}
+      {/* ── Top joueurs par équipe ── */}
       <div className="grid grid-cols-2 gap-4">
         {[{ label: 'ÉQUIPE 1', color: '#E8651A', list: team1 }, { label: 'ÉQUIPE 2', color: '#3B9EF0', list: team2 }].map(({ label, color, list }) => (
           <div key={label} className="bg-[#141414] border border-[#1E1E1E] rounded-xl p-4 flex flex-col gap-2">
@@ -150,7 +207,67 @@ function ResultsTab() {
         ))}
       </div>
 
-      {/* Classement complet */}
+      {/* ✅ MODIF 5 : section résultats coachs */}
+      {(coachScores1.length > 0 || coachScores2.length > 0) && (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <div className="h-px flex-1 bg-[#1E1E1E]"/>
+            <span className="text-white/50 text-xs uppercase tracking-widest font-semibold px-2">🧑‍💼 Résultats Coachs</span>
+            <div className="h-px flex-1 bg-[#1E1E1E]"/>
+          </div>
+          <div className="bg-[#0A0A0A] border border-[#1E1E1E] rounded-xl p-3 flex items-center gap-2">
+            <span className="text-[#E8651A] text-sm">⚖️</span>
+            <span className="text-white/40 text-xs">Pondération · Coach principal = <span className="text-[#E8651A] font-bold">1.5 pts</span> · Coach adjoint = <span className="text-[#3B9EF0] font-bold">1 pt</span></span>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            {[
+              { label: 'ÉQUIPE 1', color: '#E8651A', list: coachScores1 },
+              { label: 'ÉQUIPE 2', color: '#3B9EF0', list: coachScores2 },
+            ].map(({ label, color, list }) => (
+              <div key={label} className="bg-[#141414] border border-[#1E1E1E] rounded-xl p-4 flex flex-col gap-2">
+                <span style={{fontFamily:'Bebas Neue,sans-serif', color, fontSize:14, letterSpacing:'0.1em'}}>{label}</span>
+                {list.length === 0 ? (
+                  <span className="text-white/25 text-xs italic">Aucun vote</span>
+                ) : (
+                  list.map((cs, i) => {
+                    const roleLabel = i === 0 ? 'PRINCIPAL' : i === 1 ? 'ADJOINT' : '';
+                    return (
+                      <div key={cs.coach.id} className="flex items-center gap-2 p-2 rounded-lg border"
+                        style={{borderColor: i < 2 ? `${color}40` : '#1E1E1E', background: i < 2 ? `${color}08` : 'transparent'}}>
+                        <span style={{fontFamily:'Bebas Neue,sans-serif', color: i < 2 ? color : 'rgba(255,255,255,0.2)', fontSize:16, width:18, flexShrink:0}}>{i+1}</span>
+                        <div className="w-7 h-7 rounded-full overflow-hidden bg-[#1E1E1E] flex-shrink-0 flex items-center justify-center border"
+                          style={{borderColor: i < 2 ? color : '#333'}}>
+                          {cs.coach.photo_url
+                            ? <img src={cs.coach.photo_url} alt={cs.coach.last_name} className="w-full h-full object-cover"/>
+                            : <span style={{fontFamily:'Bebas Neue,sans-serif', color, fontSize:10}}>{cs.coach.first_name[0]}{cs.coach.last_name[0]}</span>
+                          }
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-white text-xs font-semibold truncate block">{cs.coach.first_name} {cs.coach.last_name}</span>
+                          <span className="text-white/30 text-[10px]">
+                            🧑‍💼×{cs.headVotes} · 👨‍💼×{cs.assistantVotes}
+                          </span>
+                        </div>
+                        <div className="flex flex-col items-end flex-shrink-0">
+                          <span style={{fontFamily:'Bebas Neue,sans-serif', color: i < 2 ? color : 'rgba(255,255,255,0.2)', fontSize:18, lineHeight:1}}>
+                            {cs.total % 1 === 0 ? cs.total : cs.total.toFixed(1)}
+                          </span>
+                          {roleLabel && i < 2 && (
+                            <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full mt-0.5"
+                              style={{background:`${color}20`,color,border:`1px solid ${color}40`}}>{roleLabel}</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Classement complet joueurs */}
       <div className="flex flex-col gap-3">
         {scores.map((s, i) => {
           const teamColor = s.player.team === 1 ? '#E8651A' : s.player.team === 2 ? '#3B9EF0' : '#444';
@@ -190,7 +307,9 @@ function ResultsTab() {
   );
 }
 
-/* ─── Onglet Codes ────────────────────────────── */
+/* ─── Onglet Codes ─────────────────────────────
+   ✅ MODIF 1 : génération de codes dans les plages 9501-9700 et 3911-3930
+*/
 function CodesTab() {
   const [quantity, setQuantity] = useState(50);
   const [generating, setGenerating] = useState(false);
@@ -199,23 +318,44 @@ function CodesTab() {
   const [searchCode, setSearchCode] = useState('');
   const [invalidating, setInvalidating] = useState(false);
   const [invalidateMsg, setInvalidateMsg] = useState('');
+  const [availableCount, setAvailableCount] = useState({ range1: 0, range2: 0 });
 
   useEffect(() => { fetchCodes(); }, []);
 
   async function fetchCodes() {
-    const { data } = await supabase.from('voting_codes').select('code,status').order('created_at',{ascending:false}).limit(100);
-    if (data) setCodes(data);
+    const { data } = await supabase.from('voting_codes').select('code,status').order('created_at',{ascending:false}).limit(500);
+    if (data) {
+      setCodes(data);
+      // Calculer les codes disponibles par plage
+      const existingSet = new Set(data.map(c => c.code));
+      const r1 = Array.from({length: 200}, (_, i) => String(9501 + i)).filter(c => !existingSet.has(c)).length;
+      const r2 = Array.from({length: 20}, (_, i) => String(3911 + i)).filter(c => !existingSet.has(c)).length;
+      setAvailableCount({ range1: r1, range2: r2 });
+    }
   }
 
   async function generateCodes() {
     setGenerating(true);
-    const newCodes = Array.from({length: quantity}, () => {
-      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-      const seg = (n: number) => Array.from({length:n},()=>chars[Math.floor(Math.random()*chars.length)]).join('');
-      return `ASG-${seg(4)}-${seg(4)}`;
-    });
-    const { error } = await supabase.from('voting_codes').insert(newCodes.map(code => ({code,status:'valid'})));
-    if (!error) { setGenerated(newCodes); fetchCodes(); }
+
+    // ✅ MODIF 1 : Plages fixes — 9501-9700 (200 codes) et 3911-3930 (20 codes)
+    const range1 = Array.from({length: 200}, (_, i) => String(9501 + i));
+    const range2 = Array.from({length: 20},  (_, i) => String(3911 + i));
+    const allPossible = [...range1, ...range2]; // 220 codes max
+
+    // Récupérer tous les codes existants pour éviter les doublons
+    const { data: existingData } = await supabase.from('voting_codes').select('code');
+    const existingSet = new Set((existingData || []).map(c => c.code));
+    const available = allPossible.filter(c => !existingSet.has(c));
+
+    if (available.length === 0) {
+      alert('⚠️ Tous les codes des plages 9501-9700 et 3911-3930 ont déjà été générés !');
+      setGenerating(false);
+      return;
+    }
+
+    const toGenerate = available.slice(0, Math.min(quantity, available.length));
+    const { error } = await supabase.from('voting_codes').insert(toGenerate.map(code => ({code, status: 'valid'})));
+    if (!error) { setGenerated(toGenerate); fetchCodes(); }
     setGenerating(false);
   }
 
@@ -248,8 +388,8 @@ function CodesTab() {
     a.href = url; a.download = filename; a.click();
   }
 
-  const valid = codes.filter(c => c.status === 'valid').length;
-  const used = codes.filter(c => c.status === 'used').length;
+  const valid    = codes.filter(c => c.status === 'valid').length;
+  const used     = codes.filter(c => c.status === 'used').length;
   const disabled = codes.filter(c => c.status === 'disabled').length;
 
   return (
@@ -262,15 +402,33 @@ function CodesTab() {
           </div>
         ))}
       </div>
+
+      {/* ✅ MODIF 1 : info sur les plages disponibles */}
+      <div className="bg-[#0A0A0A] border border-[#E8651A]/30 rounded-xl p-4 flex flex-col gap-2">
+        <p className="text-[#E8651A] text-xs font-bold uppercase tracking-wider">📌 Plages de codes</p>
+        <div className="grid grid-cols-2 gap-3 mt-1">
+          <div className="rounded-lg p-3 flex flex-col gap-1" style={{background:'rgba(232,101,26,0.08)',border:'1px solid rgba(232,101,26,0.2)'}}>
+            <span className="text-white font-mono text-sm font-bold">9501 → 9700</span>
+            <span className="text-white/40 text-xs">200 codes · {availableCount.range1} disponibles</span>
+          </div>
+          <div className="rounded-lg p-3 flex flex-col gap-1" style={{background:'rgba(59,158,240,0.08)',border:'1px solid rgba(59,158,240,0.2)'}}>
+            <span className="text-white font-mono text-sm font-bold">3911 → 3930</span>
+            <span className="text-white/40 text-xs">20 codes · {availableCount.range2} disponibles</span>
+          </div>
+        </div>
+        <p className="text-white/25 text-[10px] mt-1">Total disponible : {availableCount.range1 + availableCount.range2} / 220 codes</p>
+      </div>
+
       <div className="bg-[#141414] border border-[#1E1E1E] rounded-xl p-5 flex flex-col gap-4">
         <h3 className="font-semibold text-white text-sm uppercase tracking-wider">Générer des codes</h3>
         <div className="flex gap-3 items-end">
           <div className="flex flex-col gap-1 flex-1">
-            <label className="text-white/40 text-xs">Quantité</label>
-            <input type="number" min={1} max={1000} value={quantity} onChange={e => setQuantity(Number(e.target.value))}
+            <label className="text-white/40 text-xs">Quantité (max {availableCount.range1 + availableCount.range2} disponibles)</label>
+            <input type="number" min={1} max={availableCount.range1 + availableCount.range2} value={quantity}
+              onChange={e => setQuantity(Number(e.target.value))}
               className="bg-[#0A0A0A] border border-[#1E1E1E] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-[#E8651A]" />
           </div>
-          <button onClick={generateCodes} disabled={generating}
+          <button onClick={generateCodes} disabled={generating || availableCount.range1 + availableCount.range2 === 0}
             className="font-semibold px-5 py-2 rounded-lg transition-all disabled:opacity-50 flex items-center gap-2"
             style={{background:'#E8651A',color:'white'}}>
             {generating ? <><div className="spinner" style={{width:16,height:16,borderWidth:2}} /> Génération...</> : '✨ Générer'}
@@ -282,19 +440,20 @@ function CodesTab() {
               <p className="text-green-400 text-sm">✅ {generated.length} codes générés</p>
               <button onClick={() => exportCSV(generated, `codes-${Date.now()}.csv`)} className="text-xs text-[#E8651A] hover:underline">📥 CSV</button>
             </div>
-            <div className="max-h-32 overflow-y-auto bg-[#0A0A0A] rounded-lg p-3 font-mono text-xs text-white/60 grid grid-cols-2 gap-1">
-              {generated.slice(0,20).map(c => <span key={c}>{c}</span>)}
-              {generated.length > 20 && <span className="text-white/30">+{generated.length-20} autres...</span>}
+            <div className="max-h-32 overflow-y-auto bg-[#0A0A0A] rounded-lg p-3 font-mono text-xs text-white/60 grid grid-cols-4 gap-1">
+              {generated.slice(0,40).map(c => <span key={c}>{c}</span>)}
+              {generated.length > 40 && <span className="text-white/30">+{generated.length-40} autres...</span>}
             </div>
           </div>
         )}
       </div>
+
       <div className="bg-[#141414] border border-[#1E1E1E] rounded-xl p-5 flex flex-col gap-3">
         <h3 className="font-semibold text-white text-sm uppercase tracking-wider">🚫 Invalider un code</h3>
         <div className="flex gap-2">
-          <input type="text" value={searchCode} onChange={e => setSearchCode(e.target.value.toUpperCase())}
-            placeholder="ASG-XXXX-XXXX"
-            className="flex-1 bg-[#0A0A0A] border border-[#1E1E1E] rounded-lg px-3 py-2 text-white font-mono placeholder:text-white/20 focus:outline-none focus:border-[#E8651A] uppercase" />
+          <input type="text" value={searchCode} onChange={e => setSearchCode(e.target.value)}
+            placeholder="Ex: 9501 ou 3915"
+            className="flex-1 bg-[#0A0A0A] border border-[#1E1E1E] rounded-lg px-3 py-2 text-white font-mono placeholder:text-white/20 focus:outline-none focus:border-[#E8651A]" />
           <button onClick={invalidateCode} disabled={!searchCode.trim() || invalidating}
             className="font-semibold px-4 py-2 rounded-lg transition-all disabled:opacity-40 flex items-center gap-2 text-sm"
             style={{background:'#b91c1c',color:'white'}}>
@@ -303,15 +462,17 @@ function CodesTab() {
         </div>
         {invalidateMsg && <p className={`text-sm ${invalidateMsg.startsWith('✅') ? 'text-green-400' : 'text-red-400'}`}>{invalidateMsg}</p>}
       </div>
+
       <button onClick={() => exportCSV(codes.map(c=>c.code), `tous-codes-${Date.now()}.csv`)}
         className="text-sm text-[#E8651A] border border-[#E8651A]/30 hover:border-[#E8651A] px-4 py-2 rounded-lg transition-all self-start">
         📥 Exporter tous les codes (CSV)
       </button>
+
       <div className="bg-[#141414] border border-[#1E1E1E] rounded-xl overflow-hidden">
         <table className="w-full admin-table">
           <thead><tr><th className="text-left">Code</th><th className="text-left">Statut</th><th className="text-left">Action</th></tr></thead>
           <tbody>
-            {codes.slice(0,50).map(c => (
+            {codes.slice(0,100).map(c => (
               <tr key={c.code}>
                 <td className="font-mono text-white/80 text-sm">{c.code}</td>
                 <td><span className="inline-block px-2 py-0.5 rounded-full text-xs font-bold uppercase"
@@ -338,11 +499,9 @@ function PlayersTab() {
   const [saving,     setSaving]     = useState(false);
   const [uploadingId,setUploadingId]= useState<string|null>(null);
 
-  // ── Édition inline ──
   const [editId,   setEditId]   = useState<string|null>(null);
   const [editForm, setEditForm] = useState({ first_name:'', last_name:'', number:'', position:'', team: 1 as number });
 
-  // ── Import CSV ──
   const [csvPreview,   setCsvPreview]   = useState<{ first_name:string; last_name:string; number:string; position:string; team:number }[]>([]);
   const [csvImporting, setCsvImporting] = useState(false);
   const [csvMsg,       setCsvMsg]       = useState('');
@@ -355,7 +514,6 @@ function PlayersTab() {
     if (data) setPlayers(data);
   }
 
-  // ── Ajout ──
   async function addPlayer(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -372,7 +530,6 @@ function PlayersTab() {
     setSaving(false);
   }
 
-  // ── Édition ──
   function openEdit(p: PlayerRow) {
     setEditId(p.id);
     setEditForm({
@@ -396,7 +553,6 @@ function PlayersTab() {
     fetchPlayers();
   }
 
-  // ── CSV ──
   function parseCSV(text: string) {
     const lines = text.trim().split(/\r?\n/).filter(Boolean);
     if (lines.length < 2) return [];
@@ -507,8 +663,6 @@ function PlayersTab() {
 
   return (
     <div className="flex flex-col gap-6">
-
-      {/* ── Formulaire ajout ── */}
       <div className="bg-[#141414] border border-[#1E1E1E] rounded-xl p-5">
         <h3 className="font-semibold text-white text-sm uppercase tracking-wider mb-1">Ajouter un joueur</h3>
         <p className="text-white/30 text-xs mb-4">Seuls le prénom et l&apos;équipe sont obligatoires.</p>
@@ -522,7 +676,6 @@ function PlayersTab() {
           <input type="number" placeholder="Numéro (optionnel)" value={form.number}
             onChange={e => setForm(p => ({...p, number: e.target.value}))}
             className="bg-[#0A0A0A] border border-[#1E1E1E] rounded-lg px-3 py-2 text-white placeholder:text-white/20 focus:outline-none focus:border-[#E8651A]" />
-          {/* Poste optionnel : select + option vide */}
           <select value={form.position} onChange={e => setForm(p => ({...p, position: e.target.value}))}
             className="bg-[#0A0A0A] border border-[#1E1E1E] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-[#E8651A]">
             <option value="">Poste (optionnel)</option>
@@ -550,7 +703,7 @@ function PlayersTab() {
         </form>
       </div>
 
-      {/* ── Import CSV ── */}
+      {/* Import CSV */}
       <div className="bg-[#141414] border border-[#1E1E1E] rounded-xl overflow-hidden">
         <button onClick={() => setShowCsvPanel(v => !v)}
           className="w-full flex items-center justify-between px-5 py-4 text-left transition-colors hover:bg-white/5">
@@ -567,21 +720,18 @@ function PlayersTab() {
           <div className="px-5 pb-5 flex flex-col gap-4 border-t border-[#1E1E1E]">
             <div className="bg-[#0A0A0A] rounded-xl p-4 flex flex-col gap-2 mt-4">
               <p className="text-white/50 text-xs font-bold uppercase tracking-wider">Format CSV</p>
-              <p className="text-white/35 text-xs">Séparateur : <code className="text-[#E8651A]">,</code> ou <code className="text-[#E8651A]">;</code> — Seul le prénom est obligatoire.</p>
               <div className="mt-1 p-3 bg-black/40 rounded-lg font-mono text-[11px] text-white/50 overflow-x-auto">
                 <div>first_name,last_name,number,position,team</div>
                 <div>Lucas,Martin,7,PG,1</div>
                 <div>Tom,,23,,2</div>
-                <div>Alexis,Dupont,,,1</div>
               </div>
-              <p className="text-white/25 text-[10px]">Colonnes FR acceptées : prénom, nom, numéro, poste, équipe</p>
             </div>
             <label className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-dashed cursor-pointer transition-all hover:border-[#E8651A]/60 hover:bg-[#E8651A]/5"
               style={{borderColor:'rgba(255,255,255,0.1)'}}>
               <span className="text-3xl">📄</span>
               <div className="text-center">
                 <p className="text-white font-semibold text-sm">Choisir un fichier CSV</p>
-                <p className="text-white/30 text-xs mt-0.5">.csv · UTF-8 recommandé</p>
+                <p className="text-white/30 text-xs mt-0.5">.csv · UTF-8</p>
               </div>
               <input type="file" accept=".csv,text/csv" className="hidden" onChange={handleCSVFile} />
             </label>
@@ -632,7 +782,6 @@ function PlayersTab() {
         )}
       </div>
 
-      {/* ── Résumé par équipe ── */}
       <div className="grid grid-cols-2 gap-3">
         {[{n:1,color:'#E8651A',list:team1},{n:2,color:'#3B9EF0',list:team2}].map(({n,color,list}) => (
           <div key={n} className="rounded-xl p-3 flex flex-col gap-1" style={{background:`${color}0c`,border:`1px solid ${color}28`}}>
@@ -643,7 +792,6 @@ function PlayersTab() {
         ))}
       </div>
 
-      {/* ── Liste joueurs groupée ── */}
       {[
         {label:'ÉQUIPE 1', color:'#E8651A', list: team1},
         {label:'ÉQUIPE 2', color:'#3B9EF0', list: team2},
@@ -658,11 +806,8 @@ function PlayersTab() {
           <div className="flex flex-col gap-3">
             {list.map(p => (
               <div key={p.id} className="bg-[#141414] border border-[#1E1E1E] rounded-xl overflow-hidden">
-
-                {/* ── Vue normale ── */}
                 {editId !== p.id && (
                   <div className="p-4 flex items-center gap-4">
-                    {/* Photo */}
                     <div className="relative flex-shrink-0">
                       <div className="w-14 h-14 rounded-full overflow-hidden bg-[#0A0A0A] border border-[#1E1E1E] flex items-center justify-center">
                         {p.photo_url
@@ -678,10 +823,9 @@ function PlayersTab() {
                           onChange={e => e.target.files?.[0] && uploadPhoto(p.id, e.target.files[0])} />
                       </label>
                     </div>
-                    {/* Infos */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        {p.number ? <span style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-lg text-[#E8651A]">#{p.number}</span> : null}
+                        {p.number && p.number !== 0 ? <span style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-lg text-[#E8651A]">#{p.number}</span> : null}
                         <span className="font-semibold text-white truncate">{p.first_name} {p.last_name}</span>
                       </div>
                       <div className="flex items-center gap-2 mt-1">
@@ -690,11 +834,9 @@ function PlayersTab() {
                         <TeamBadge team={p.team} onChange={(t) => assignTeam(p.id, t)} />
                       </div>
                     </div>
-                    {/* Actions */}
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <button onClick={() => openEdit(p)}
-                        className="w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:bg-[#E8651A]/20 text-white/40 hover:text-[#E8651A]"
-                        title="Modifier">
+                        className="w-8 h-8 rounded-lg flex items-center justify-center transition-all hover:bg-[#E8651A]/20 text-white/40 hover:text-[#E8651A]">
                         ✏️
                       </button>
                       <button onClick={() => toggleActive(p.id, p.is_active)}
@@ -707,8 +849,6 @@ function PlayersTab() {
                     </div>
                   </div>
                 )}
-
-                {/* ── Mode édition ── */}
                 {editId === p.id && (
                   <div className="p-4 flex flex-col gap-3" style={{background:'rgba(232,101,26,0.04)',borderTop:'2px solid rgba(232,101,26,0.4)'}}>
                     <div className="flex items-center justify-between mb-1">
@@ -752,7 +892,6 @@ function PlayersTab() {
                     </button>
                   </div>
                 )}
-
               </div>
             ))}
           </div>
@@ -831,7 +970,6 @@ function CoachesTab() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Formulaire */}
       <div className="bg-[#141414] border border-[#1E1E1E] rounded-xl p-5">
         <h3 className="font-semibold text-white text-sm uppercase tracking-wider mb-4">Ajouter un coach</h3>
         <form onSubmit={addCoach} className="grid grid-cols-2 gap-3">
@@ -861,7 +999,6 @@ function CoachesTab() {
         </form>
       </div>
 
-      {/* Résumé */}
       <div className="grid grid-cols-2 gap-3">
         {[{n:1,color:'#E8651A',list:team1},{n:2,color:'#3B9EF0',list:team2}].map(({n,color,list}) => (
           <div key={n} className="rounded-xl p-3 flex flex-col gap-1" style={{background:`${color}0c`,border:`1px solid ${color}28`}}>
@@ -872,7 +1009,6 @@ function CoachesTab() {
         ))}
       </div>
 
-      {/* Liste groupée */}
       {[
         {label:'ÉQUIPE 1', color:'#E8651A', list: team1},
         {label:'ÉQUIPE 2', color:'#3B9EF0', list: team2},
