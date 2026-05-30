@@ -297,8 +297,6 @@ function ResultsTab() {
 
 /* ─── Onglet Équipes Sélectionnées ─────────────── */
 function EquipesTab() {
-  const [players, setPlayers] = useState<(Player & { team?: number | null })[]>([]);
-  const [coaches, setCoaches] = useState<Coach[]>([]);
   const [scores, setScores] = useState<PlayerScore[]>([]);
   const [coachScores1, setCoachScores1] = useState<CoachScore[]>([]);
   const [coachScores2, setCoachScores2] = useState<CoachScore[]>([]);
@@ -318,9 +316,6 @@ function EquipesTab() {
     const { data: pl } = await supabase.from('players').select('*').eq('is_active', true);
     const { data: co } = await supabase.from('coaches').select('*').eq('is_active', true);
     if (!pl) { setLoading(false); return; }
-
-    setPlayers(pl);
-    setCoaches(co || []);
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -362,109 +357,76 @@ function EquipesTab() {
       setCoachScores1(co.filter(c=>c.team===1).map(c=>buildCS(c,hc1,ac1)).sort((a,b)=>b.total-a.total));
       setCoachScores2(co.filter(c=>c.team===2).map(c=>buildCS(c,hc2,ac2)).sort((a,b)=>b.total-a.total));
     }
-
     setLoading(false);
   }
 
-  const top5_1 = scores.filter(s => s.player.team === 1).slice(0, 5);
-  const top5_2 = scores.filter(s => s.player.team === 2).slice(0, 5);
+  const all1 = scores.filter(s => s.player.team === 1);
+  const all2 = scores.filter(s => s.player.team === 2);
   const headCoach1 = coachScores1[0] || null;
   const headCoach2 = coachScores2[0] || null;
 
-  // Pad to 5 slots
-  const pad5 = (arr: PlayerScore[]) => {
-    const result = [...arr];
-    while (result.length < 5) result.push({ player: { id: `ph-${result.length}`, first_name: '?', last_name: '?', number: 0, position: '', photo_url: null, is_active: false, created_at: '' }, votes: 0, bonuses: 0 });
-    return result;
-  };
-
   if (loading) return <div className="flex justify-center py-20"><div className="spinner" style={{width:32,height:32,borderWidth:3}} /></div>;
 
-  const PlayerSlot = ({ ps, teamColor, index }: { ps: PlayerScore; teamColor: string; index: number }) => {
-    const isPlaceholder = ps.player.id.startsWith('ph-');
-    return (
-      <div className="flex flex-col items-center gap-1.5">
-        {/* Rank badge */}
-        <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black"
-          style={{ background: `${teamColor}30`, color: teamColor, border: `1px solid ${teamColor}60` }}>
-          {index + 1}
-        </div>
-        {/* Photo */}
-        <div className="relative w-14 h-14 rounded-xl overflow-hidden border-2 flex items-center justify-center"
-          style={{
-            borderColor: isPlaceholder ? 'rgba(255,255,255,0.1)' : teamColor,
-            background: isPlaceholder ? '#0A0A0A' : '#1A1A1A',
-            boxShadow: isPlaceholder ? 'none' : `0 0 12px ${teamColor}50`,
-          }}>
-          {isPlaceholder ? (
-            <svg className="w-7 h-7 opacity-20" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
-            </svg>
-          ) : ps.player.photo_url ? (
-            <img src={ps.player.photo_url} alt={ps.player.last_name} className="w-full h-full object-cover object-top" />
-          ) : (
-            <span style={{ fontFamily: 'Bebas Neue,sans-serif', color: teamColor, fontSize: 18 }}>
-              {ps.player.first_name[0]}{ps.player.last_name[0]}
-            </span>
-          )}
-          {/* Number badge */}
-          {!isPlaceholder && ps.player.number > 0 && (
-            <div className="absolute bottom-0 right-0 w-4 h-4 rounded-tl-md flex items-center justify-center text-[9px] font-black"
-              style={{ background: teamColor, color: 'white' }}>
-              {ps.player.number}
-            </div>
-          )}
-        </div>
-        {/* Name */}
-        <div className="text-center">
-          {isPlaceholder ? (
-            <span className="text-white/20 text-[9px]">En attente</span>
-          ) : (
-            <>
-              <p style={{ fontFamily: 'Bebas Neue,sans-serif', color: 'white', fontSize: 10, lineHeight: 1.2 }}>
-                {ps.player.last_name.toUpperCase()}
-              </p>
-              <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', lineHeight: 1.2 }}>
-                {ps.player.first_name.toUpperCase()}
-              </p>
-              <p style={{ fontFamily: 'Bebas Neue,sans-serif', color: teamColor, fontSize: 10 }}>
-                {ps.votes} pts
-              </p>
-            </>
-          )}
-        </div>
+  // Carte portrait : on adapte la taille des slots selon le nombre de joueurs
+  const PlayerSlot = ({ ps, teamColor, index }: { ps: PlayerScore; teamColor: string; index: number }) => (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+      <div style={{ width: 16, height: 16, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8, fontWeight: 900, background: `${teamColor}30`, color: teamColor, border: `1px solid ${teamColor}50`, flexShrink: 0 }}>
+        {index + 1}
       </div>
-    );
-  };
-
-  const CoachSlot = ({ cs, teamColor, label }: { cs: CoachScore | null; teamColor: string; label: string }) => (
-    <div className="flex items-center gap-2 flex-1 rounded-xl p-2.5"
-      style={{ background: `${teamColor}10`, border: `1px solid ${teamColor}30` }}>
-      <div className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0"
-        style={{ background: cs ? '#1A1A1A' : '#0A0A0A', border: `2px solid ${cs ? teamColor : 'rgba(255,255,255,0.1)'}` }}>
-        {cs?.coach.photo_url
-          ? <img src={cs.coach.photo_url} alt="" className="w-full h-full object-cover object-top" />
-          : <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" style={{ color: cs ? teamColor : 'rgba(255,255,255,0.2)' }}>
-              <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
-            </svg>
+      <div style={{ position: 'relative', width: 40, height: 40, borderRadius: 8, overflow: 'hidden', border: `2px solid ${teamColor}`, background: '#1A1A1A', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 8px ${teamColor}40`, flexShrink: 0 }}>
+        {ps.player.photo_url
+          ? <img src={ps.player.photo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
+          : <span style={{ fontFamily: 'Bebas Neue, sans-serif', color: teamColor, fontSize: 14 }}>{ps.player.first_name[0]}{ps.player.last_name?.[0] || ''}</span>
         }
-      </div>
-      <div className="min-w-0">
-        <p className="text-[9px] uppercase tracking-wider" style={{ color: teamColor }}>{label}</p>
-        {cs ? (
-          <>
-            <p style={{ fontFamily: 'Bebas Neue,sans-serif', color: 'white', fontSize: 12, lineHeight: 1.2 }}>
-              {cs.coach.first_name} {cs.coach.last_name}
-            </p>
-          </>
-        ) : (
-          <p className="text-white/25 text-[10px]">En attente</p>
+        {ps.player.number > 0 && (
+          <div style={{ position: 'absolute', bottom: 0, right: 0, width: 13, height: 13, borderTopLeftRadius: 4, background: teamColor, color: 'white', fontSize: 7, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {ps.player.number}
+          </div>
         )}
+      </div>
+      <div style={{ textAlign: 'center', maxWidth: 44 }}>
+        <p style={{ fontFamily: 'Bebas Neue, sans-serif', color: 'white', fontSize: 8, lineHeight: 1.1, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 44 }}>
+          {ps.player.last_name.toUpperCase()}
+        </p>
+        <p style={{ fontSize: 7, color: 'rgba(255,255,255,0.4)', lineHeight: 1, margin: 0 }}>
+          {ps.player.first_name.toUpperCase()}
+        </p>
+        <p style={{ fontFamily: 'Bebas Neue, sans-serif', color: teamColor, fontSize: 8, margin: 0 }}>
+          {ps.votes}pts
+        </p>
       </div>
     </div>
   );
 
-  const previewUrl = `${siteUrl}/admin?preview=equipes`;
+  const CoachSlot = ({ cs, teamColor, label }: { cs: CoachScore | null; teamColor: string; label: string }) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, borderRadius: 10, padding: '6px 8px', background: `${teamColor}10`, border: `1px solid ${teamColor}30` }}>
+      <div style={{ width: 32, height: 32, borderRadius: '50%', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: cs ? '#1A1A1A' : '#0A0A0A', border: `2px solid ${cs ? teamColor : 'rgba(255,255,255,0.1)'}` }}>
+        {cs?.coach.photo_url
+          ? <img src={cs.coach.photo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
+          : <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24" style={{ color: cs ? teamColor : 'rgba(255,255,255,0.2)' }}>
+              <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
+            </svg>
+        }
+      </div>
+      <div style={{ minWidth: 0 }}>
+        <p style={{ fontSize: 8, textTransform: 'uppercase', letterSpacing: '0.1em', color: teamColor, margin: 0 }}>{label}</p>
+        {cs
+          ? <p style={{ fontFamily: 'Bebas Neue, sans-serif', color: 'white', fontSize: 11, lineHeight: 1.2, margin: 0 }}>{cs.coach.first_name} {cs.coach.last_name}</p>
+          : <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)', margin: 0 }}>En attente</p>
+        }
+      </div>
+    </div>
+  );
+
+  // Grille joueurs : wrap automatique selon nb joueurs
+  const PlayersGrid = ({ players, teamColor }: { players: PlayerScore[]; teamColor: string }) => (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '8px 10px 6px', justifyContent: 'center' }}>
+      {players.length === 0
+        ? <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', margin: '8px 0' }}>Aucun joueur assigné</p>
+        : players.map((ps, i) => <PlayerSlot key={ps.player.id} ps={ps} teamColor={teamColor} index={i} />)
+      }
+    </div>
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -474,27 +436,29 @@ function EquipesTab() {
         <div>
           <p className="text-white font-semibold text-sm">Visuel Réseaux Sociaux</p>
           <p className="text-white/50 text-xs mt-1">
-            Ce panneau affiche les 5 joueurs les plus votés par équipe et les coachs.
-            Faites une capture d&apos;écran du cadre ci-dessous pour le partager sur les réseaux.
+            Tous les membres des équipes classés par votes. Faites une capture d&apos;écran du cadre pour le partager.
           </p>
         </div>
       </div>
 
-      {/* Bouton rafraîchir */}
-      <button onClick={loadData} className="self-start px-4 py-2 rounded-lg text-sm font-semibold border border-[#1E1E1E] text-white/60 hover:text-white hover:border-[#E8651A] transition-all">
-        🔄 Rafraîchir
-      </button>
+      <div className="flex gap-3">
+        <button onClick={loadData} className="px-4 py-2 rounded-lg text-sm font-semibold border border-[#1E1E1E] text-white/60 hover:text-white hover:border-[#E8651A] transition-all">
+          🔄 Rafraîchir
+        </button>
+        <div className="flex items-center gap-2 text-white/30 text-xs">
+          <span>Équipe 1 : <span className="text-[#E8651A] font-bold">{all1.length}</span> joueurs</span>
+          <span>·</span>
+          <span>Équipe 2 : <span className="text-[#3B9EF0] font-bold">{all2.length}</span> joueurs</span>
+        </div>
+      </div>
 
-      {/* ══════════════════════════════════════════════
-          CARTE RÉSEAUX SOCIAUX — Format Portrait 9:16
-          ══════════════════════════════════════════════ */}
+      {/* ══ CARTE RÉSEAUX SOCIAUX ══ */}
       <div
         id="social-card"
         style={{
           width: '100%',
           maxWidth: 420,
-          aspectRatio: '9 / 16',
-          background: 'linear-gradient(180deg, #050A1A 0%, #0A0F24 30%, #0D0D0D 60%, #050505 100%)',
+          background: 'linear-gradient(180deg, #050A1A 0%, #0A0F24 25%, #0D0D0D 55%, #050505 100%)',
           borderRadius: 20,
           overflow: 'hidden',
           position: 'relative',
@@ -503,93 +467,73 @@ function EquipesTab() {
           display: 'flex',
           flexDirection: 'column',
           fontFamily: 'system-ui, sans-serif',
+          paddingBottom: 12,
         }}
       >
-        {/* Fond terrain stylisé */}
+        {/* Fond décoratif */}
         <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
-          {/* Lumières de stade */}
           <div style={{ position: 'absolute', top: -40, left: -40, width: 200, height: 200, borderRadius: '50%', background: 'radial-gradient(circle, rgba(232,101,26,0.12) 0%, transparent 70%)' }} />
           <div style={{ position: 'absolute', top: -40, right: -40, width: 200, height: 200, borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,158,240,0.12) 0%, transparent 70%)' }} />
-          {/* Ligne de terrain bas */}
-          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 160, background: 'linear-gradient(to top, rgba(232,101,26,0.06) 0%, transparent 100%)' }} />
-          <svg style={{ position: 'absolute', bottom: 0, left: 0, right: 0, width: '100%', height: 100, opacity: 0.12 }} viewBox="0 0 420 100" preserveAspectRatio="none">
-            <path d="M 0 100 L 0 60 A 210 60 0 0 1 420 60 L 420 100 Z" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.5"/>
-            <circle cx="210" cy="100" r="35" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" strokeDasharray="4,3"/>
-            <line x1="0" y1="60" x2="420" y2="60" stroke="rgba(255,255,255,0.2)" strokeWidth="1"/>
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 120, background: 'linear-gradient(to top, rgba(232,101,26,0.05) 0%, transparent 100%)' }} />
+          <svg style={{ position: 'absolute', bottom: 0, left: 0, right: 0, width: '100%', height: 80, opacity: 0.1 }} viewBox="0 0 420 80" preserveAspectRatio="none">
+            <path d="M 0 80 L 0 48 A 210 48 0 0 1 420 48 L 420 80 Z" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.5"/>
+            <circle cx="210" cy="80" r="28" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" strokeDasharray="4,3"/>
           </svg>
-          {/* Bordure dorée */}
-          <div style={{ position: 'absolute', inset: 8, border: '1px solid rgba(212,175,55,0.2)', borderRadius: 14, pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', inset: 8, border: '1px solid rgba(212,175,55,0.15)', borderRadius: 14, pointerEvents: 'none' }} />
         </div>
 
         {/* ── HEADER ── */}
-        <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px 16px 10px', gap: 6 }}>
-          {/* Logo club */}
-          <div style={{ width: 52, height: 52, borderRadius: 12, overflow: 'hidden', border: '2px solid rgba(212,175,55,0.5)', background: '#141414', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 16px rgba(212,175,55,0.3)' }}>
+        <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '16px 16px 8px', gap: 4 }}>
+          <div style={{ width: 44, height: 44, borderRadius: 10, overflow: 'hidden', border: '2px solid rgba(212,175,55,0.5)', background: '#141414', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 14px rgba(212,175,55,0.3)' }}>
             <img src="/logo.png" alt="CSL" style={{ width: '80%', height: '80%', objectFit: 'contain' }} />
           </div>
-
-          {/* Titre */}
           <div style={{ textAlign: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 2 }}>
-              <span style={{ color: '#D4AF37', fontSize: 11 }}>★</span>
-              <p style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 11, color: '#D4AF37', letterSpacing: '0.25em', margin: 0 }}>CSL BASKET ST VALLIER</p>
-              <span style={{ color: '#D4AF37', fontSize: 11 }}>★</span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 1 }}>
+              <span style={{ color: '#D4AF37', fontSize: 10 }}>★</span>
+              <p style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 10, color: '#D4AF37', letterSpacing: '0.25em', margin: 0 }}>CSL BASKET ST VALLIER</p>
+              <span style={{ color: '#D4AF37', fontSize: 10 }}>★</span>
             </div>
-            <h1 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 32, color: 'white', letterSpacing: '0.05em', lineHeight: 1, margin: 0, textShadow: '0 0 30px rgba(232,101,26,0.5)' }}>
-              ÉQUIPE SÉLECTIONNÉE
+            <h1 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 28, color: 'white', letterSpacing: '0.05em', lineHeight: 1, margin: 0, textShadow: '0 0 24px rgba(232,101,26,0.5)' }}>
+              ÉQUIPES SÉLECTIONNÉES
             </h1>
-            <p style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 16, color: '#E8651A', letterSpacing: '0.1em', margin: 0, lineHeight: 1.2 }}>
+            <p style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 14, color: '#E8651A', letterSpacing: '0.1em', margin: 0, lineHeight: 1.2 }}>
               ★ AU {eventName} ★
             </p>
           </div>
-
-          <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', textAlign: 'center', margin: 0, lineHeight: 1.4 }}>
-            Vous pourrez <span style={{ color: '#E8651A', fontWeight: 700 }}>voter</span> pour votre 5 de départ sur place
-          </p>
         </div>
 
         {/* ── ÉQUIPE 1 ── */}
-        <div style={{ position: 'relative', zIndex: 2, margin: '6px 12px', borderRadius: 14, overflow: 'hidden', background: 'rgba(232,101,26,0.06)', border: '1px solid rgba(232,101,26,0.35)' }}>
-          {/* Header équipe */}
-          <div style={{ background: 'linear-gradient(90deg, rgba(232,101,26,0.8) 0%, rgba(232,101,26,0.4) 100%)', padding: '5px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <p style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 14, color: 'white', letterSpacing: '0.2em', margin: 0 }}>ÉQUIPE 1</p>
+        <div style={{ position: 'relative', zIndex: 2, margin: '6px 10px 4px', borderRadius: 12, overflow: 'hidden', background: 'rgba(232,101,26,0.06)', border: '1px solid rgba(232,101,26,0.35)' }}>
+          <div style={{ background: 'linear-gradient(90deg, rgba(232,101,26,0.85) 0%, rgba(232,101,26,0.4) 100%)', padding: '4px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <p style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 13, color: 'white', letterSpacing: '0.2em', margin: 0 }}>ÉQUIPE 1</p>
+            <p style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 11, color: 'rgba(255,255,255,0.7)', margin: 0 }}>{all1.length} JOUEURS</p>
           </div>
-          {/* Joueurs */}
-          <div style={{ display: 'flex', justifyContent: 'space-around', padding: '10px 8px 8px', gap: 4 }}>
-            {pad5(top5_1).map((ps, i) => (
-              <PlayerSlot key={ps.player.id} ps={ps} teamColor="#E8651A" index={i} />
-            ))}
-          </div>
+          <PlayersGrid players={all1} teamColor="#E8651A" />
         </div>
 
         {/* ── ÉQUIPE 2 ── */}
-        <div style={{ position: 'relative', zIndex: 2, margin: '6px 12px', borderRadius: 14, overflow: 'hidden', background: 'rgba(59,158,240,0.06)', border: '1px solid rgba(59,158,240,0.35)' }}>
-          {/* Header équipe */}
-          <div style={{ background: 'linear-gradient(90deg, rgba(59,158,240,0.8) 0%, rgba(59,158,240,0.4) 100%)', padding: '5px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <p style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 14, color: 'white', letterSpacing: '0.2em', margin: 0 }}>ÉQUIPE 2</p>
+        <div style={{ position: 'relative', zIndex: 2, margin: '4px 10px', borderRadius: 12, overflow: 'hidden', background: 'rgba(59,158,240,0.06)', border: '1px solid rgba(59,158,240,0.35)' }}>
+          <div style={{ background: 'linear-gradient(90deg, rgba(59,158,240,0.85) 0%, rgba(59,158,240,0.4) 100%)', padding: '4px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <p style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 13, color: 'white', letterSpacing: '0.2em', margin: 0 }}>ÉQUIPE 2</p>
+            <p style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 11, color: 'rgba(255,255,255,0.7)', margin: 0 }}>{all2.length} JOUEURS</p>
           </div>
-          {/* Joueurs */}
-          <div style={{ display: 'flex', justifyContent: 'space-around', padding: '10px 8px 8px', gap: 4 }}>
-            {pad5(top5_2).map((ps, i) => (
-              <PlayerSlot key={ps.player.id} ps={ps} teamColor="#3B9EF0" index={i} />
-            ))}
-          </div>
+          <PlayersGrid players={all2} teamColor="#3B9EF0" />
         </div>
 
         {/* ── COACHS ── */}
-        <div style={{ position: 'relative', zIndex: 2, display: 'flex', gap: 8, margin: '4px 12px 8px', flexShrink: 0 }}>
+        <div style={{ position: 'relative', zIndex: 2, display: 'flex', gap: 6, margin: '4px 10px 0' }}>
           <CoachSlot cs={headCoach1} teamColor="#E8651A" label="Coach Équipe 1" />
           <CoachSlot cs={headCoach2} teamColor="#3B9EF0" label="Coach Équipe 2" />
         </div>
 
         {/* ── FOOTER ── */}
-        <div style={{ position: 'relative', zIndex: 2, marginTop: 'auto', padding: '8px 16px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', margin: 0 }}>🏀 Votez sur place !</p>
-          <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', margin: 0 }}>{siteUrl.replace('https://', '')}</p>
+        <div style={{ position: 'relative', zIndex: 2, marginTop: 8, padding: '0 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <p style={{ fontSize: 8, color: 'rgba(255,255,255,0.25)', margin: 0 }}>🏀 Votez sur place !</p>
+          <p style={{ fontSize: 8, color: 'rgba(255,255,255,0.25)', margin: 0 }}>{siteUrl.replace('https://', '')}</p>
         </div>
       </div>
 
-      {/* Guide capture */}
+      {/* Guide */}
       <div className="bg-[#141414] border border-[#1E1E1E] rounded-xl p-4 flex flex-col gap-2 max-w-[420px]">
         <p className="text-white/60 text-xs font-semibold uppercase tracking-wider">📱 Comment partager</p>
         <ul className="text-white/40 text-xs flex flex-col gap-1">
