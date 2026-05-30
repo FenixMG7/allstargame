@@ -374,7 +374,7 @@ function EquipesTab() {
   // Pad to 5 slots
   const pad5 = (arr: PlayerScore[]) => {
     const result = [...arr];
-    while (result.length < 5) result.push({ player: { id: `ph-${result.length}`, first_name: '?', last_name: '?', number: 0, position: '', photo_url: null, is_active: false }, votes: 0, bonuses: 0 });
+    while (result.length < 5) result.push({ player: { id: `ph-${result.length}`, first_name: '?', last_name: '?', number: 0, position: '', photo_url: null, is_active: false, created_at: '' }, votes: 0, bonuses: 0 });
     return result;
   };
 
