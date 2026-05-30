@@ -19,7 +19,6 @@ interface Coach {
   team?: number | null;
 }
 
-// ✅ MODIF 5 : interface pour les scores des coachs dans l'admin
 interface CoachScore {
   coach: Coach;
   headVotes: number;
@@ -34,6 +33,7 @@ const ASST_WEIGHT = 1;
 function AdminNav({ active, onChange }: { active: string; onChange: (t: string) => void }) {
   const tabs = [
     { id: 'results',  label: '📊 Résultats' },
+    { id: 'equipes',  label: '⭐ Équipes' },
     { id: 'codes',    label: '🎫 Codes' },
     { id: 'players',  label: '🏀 Joueurs' },
     { id: 'coaches',  label: '🧑‍💼 Coachs' },
@@ -76,9 +76,7 @@ function TeamBadge({ team, onChange }: { team: number | null | undefined; onChan
   );
 }
 
-/* ─── Onglet Résultats ─────────────────────────
-   ✅ MODIF 5 : ajout section résultats coachs
-*/
+/* ─── Onglet Résultats ─────────────────────────── */
 function ResultsTab() {
   const [scores, setScores] = useState<PlayerScore[]>([]);
   const [coachScores1, setCoachScores1] = useState<CoachScore[]>([]);
@@ -91,7 +89,6 @@ function ResultsTab() {
     const { data: coaches } = await supabase.from('coaches').select('*').eq('is_active', true);
     if (!players) return;
 
-    // Récupérer votes avec toutes les colonnes nécessaires
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
     const votesRes = await fetch(
@@ -106,7 +103,6 @@ function ResultsTab() {
 
     if (!Array.isArray(rawVotes)) return;
 
-    // ── Scores joueurs ──
     const voteCount: Record<string, number> = {};
     const bonusCount: Record<string, number> = {};
     players.forEach(p => { voteCount[p.id] = 0; bonusCount[p.id] = 0; });
@@ -124,7 +120,6 @@ function ResultsTab() {
     setScores(scored);
     setStats({ totalVotes: rawVotes.length, totalCodes: totalCodes || 0, usedCodes: usedCodes || 0 });
 
-    // ── Scores coachs ──
     if (coaches && coaches.length > 0) {
       const hc1: Record<string,number> = {}, ac1: Record<string,number> = {};
       const hc2: Record<string,number> = {}, ac2: Record<string,number> = {};
@@ -169,8 +164,6 @@ function ResultsTab() {
 
   return (
     <div className="flex flex-col gap-6">
-
-      {/* Stats globales */}
       <div className="grid grid-cols-3 gap-4">
         {[
           { label: 'Votes exprimés', value: stats.totalVotes, icon: '🗳️' },
@@ -190,7 +183,6 @@ function ResultsTab() {
         <span className="text-xs text-white/40">Mise à jour en temps réel</span>
       </div>
 
-      {/* ── Top joueurs par équipe ── */}
       <div className="grid grid-cols-2 gap-4">
         {[{ label: 'ÉQUIPE 1', color: '#E8651A', list: team1 }, { label: 'ÉQUIPE 2', color: '#3B9EF0', list: team2 }].map(({ label, color, list }) => (
           <div key={label} className="bg-[#141414] border border-[#1E1E1E] rounded-xl p-4 flex flex-col gap-2">
@@ -207,7 +199,6 @@ function ResultsTab() {
         ))}
       </div>
 
-      {/* ✅ MODIF 5 : section résultats coachs */}
       {(coachScores1.length > 0 || coachScores2.length > 0) && (
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-2">
@@ -244,9 +235,7 @@ function ResultsTab() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <span className="text-white text-xs font-semibold truncate block">{cs.coach.first_name} {cs.coach.last_name}</span>
-                          <span className="text-white/30 text-[10px]">
-                            🧑‍💼×{cs.headVotes} · 👨‍💼×{cs.assistantVotes}
-                          </span>
+                          <span className="text-white/30 text-[10px]">🧑‍💼×{cs.headVotes} · 👨‍💼×{cs.assistantVotes}</span>
                         </div>
                         <div className="flex flex-col items-end flex-shrink-0">
                           <span style={{fontFamily:'Bebas Neue,sans-serif', color: i < 2 ? color : 'rgba(255,255,255,0.2)', fontSize:18, lineHeight:1}}>
@@ -267,7 +256,6 @@ function ResultsTab() {
         </div>
       )}
 
-      {/* Classement complet joueurs */}
       <div className="flex flex-col gap-3">
         {scores.map((s, i) => {
           const teamColor = s.player.team === 1 ? '#E8651A' : s.player.team === 2 ? '#3B9EF0' : '#444';
@@ -307,9 +295,314 @@ function ResultsTab() {
   );
 }
 
-/* ─── Onglet Codes ─────────────────────────────
-   ✅ MODIF 1 : génération de codes dans les plages 9501-9700 et 3911-3930
-*/
+/* ─── Onglet Équipes Sélectionnées ─────────────── */
+function EquipesTab() {
+  const [players, setPlayers] = useState<(Player & { team?: number | null })[]>([]);
+  const [coaches, setCoaches] = useState<Coach[]>([]);
+  const [scores, setScores] = useState<PlayerScore[]>([]);
+  const [coachScores1, setCoachScores1] = useState<CoachScore[]>([]);
+  const [coachScores2, setCoachScores2] = useState<CoachScore[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [eventName, setEventName] = useState('ALL STAR GAME');
+  const [siteUrl, setSiteUrl] = useState('');
+
+  useEffect(() => {
+    setSiteUrl(window.location.origin);
+    supabase.from('vote_settings').select('event_name').single().then(({ data }) => {
+      if (data?.event_name) setEventName(data.event_name);
+    });
+    loadData();
+  }, []);
+
+  async function loadData() {
+    const { data: pl } = await supabase.from('players').select('*').eq('is_active', true);
+    const { data: co } = await supabase.from('coaches').select('*').eq('is_active', true);
+    if (!pl) { setLoading(false); return; }
+
+    setPlayers(pl);
+    setCoaches(co || []);
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+    const votesRes = await fetch(
+      `${supabaseUrl}/rest/v1/votes?select=player_1_id,player_2_id,player_3_id,player_4_id,player_5_id,bonus_player_id,head_coach_id,assistant_coach_id,head_coach_2_id,assistant_coach_2_id`,
+      { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
+    );
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rawVotes: any[] = await votesRes.json();
+    if (!Array.isArray(rawVotes)) { setLoading(false); return; }
+
+    const voteCount: Record<string, number> = {};
+    const bonusCount: Record<string, number> = {};
+    pl.forEach(p => { voteCount[p.id] = 0; bonusCount[p.id] = 0; });
+    rawVotes.forEach(v => {
+      [v.player_1_id, v.player_2_id, v.player_3_id, v.player_4_id, v.player_5_id].forEach((id: string) => {
+        if (id && voteCount[id] !== undefined) voteCount[id]++;
+      });
+      if (v.bonus_player_id && bonusCount[v.bonus_player_id] !== undefined) bonusCount[v.bonus_player_id]++;
+    });
+    const scored = pl.map(p => ({ player: p, votes: voteCount[p.id] || 0, bonuses: bonusCount[p.id] || 0 }))
+      .sort((a, b) => b.votes - a.votes);
+    setScores(scored);
+
+    if (co && co.length > 0) {
+      const hc1: Record<string,number> = {}, ac1: Record<string,number> = {};
+      const hc2: Record<string,number> = {}, ac2: Record<string,number> = {};
+      co.forEach(c => { hc1[c.id]=0; ac1[c.id]=0; hc2[c.id]=0; ac2[c.id]=0; });
+      rawVotes.forEach(v => {
+        if (v.head_coach_id && hc1[v.head_coach_id]!==undefined) hc1[v.head_coach_id]++;
+        if (v.assistant_coach_id && ac1[v.assistant_coach_id]!==undefined) ac1[v.assistant_coach_id]++;
+        if (v.head_coach_2_id && hc2[v.head_coach_2_id]!==undefined) hc2[v.head_coach_2_id]++;
+        if (v.assistant_coach_2_id && ac2[v.assistant_coach_2_id]!==undefined) ac2[v.assistant_coach_2_id]++;
+      });
+      const buildCS = (c: Coach, hMap: Record<string,number>, aMap: Record<string,number>): CoachScore => ({
+        coach: c, headVotes: hMap[c.id]||0, assistantVotes: aMap[c.id]||0,
+        total: (hMap[c.id]||0)*HEAD_WEIGHT + (aMap[c.id]||0)*ASST_WEIGHT,
+      });
+      setCoachScores1(co.filter(c=>c.team===1).map(c=>buildCS(c,hc1,ac1)).sort((a,b)=>b.total-a.total));
+      setCoachScores2(co.filter(c=>c.team===2).map(c=>buildCS(c,hc2,ac2)).sort((a,b)=>b.total-a.total));
+    }
+
+    setLoading(false);
+  }
+
+  const top5_1 = scores.filter(s => s.player.team === 1).slice(0, 5);
+  const top5_2 = scores.filter(s => s.player.team === 2).slice(0, 5);
+  const headCoach1 = coachScores1[0] || null;
+  const headCoach2 = coachScores2[0] || null;
+
+  // Pad to 5 slots
+  const pad5 = (arr: PlayerScore[]) => {
+    const result = [...arr];
+    while (result.length < 5) result.push({ player: { id: `ph-${result.length}`, first_name: '?', last_name: '?', number: 0, position: '', photo_url: null, is_active: false }, votes: 0, bonuses: 0 });
+    return result;
+  };
+
+  if (loading) return <div className="flex justify-center py-20"><div className="spinner" style={{width:32,height:32,borderWidth:3}} /></div>;
+
+  const PlayerSlot = ({ ps, teamColor, index }: { ps: PlayerScore; teamColor: string; index: number }) => {
+    const isPlaceholder = ps.player.id.startsWith('ph-');
+    return (
+      <div className="flex flex-col items-center gap-1.5">
+        {/* Rank badge */}
+        <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black"
+          style={{ background: `${teamColor}30`, color: teamColor, border: `1px solid ${teamColor}60` }}>
+          {index + 1}
+        </div>
+        {/* Photo */}
+        <div className="relative w-14 h-14 rounded-xl overflow-hidden border-2 flex items-center justify-center"
+          style={{
+            borderColor: isPlaceholder ? 'rgba(255,255,255,0.1)' : teamColor,
+            background: isPlaceholder ? '#0A0A0A' : '#1A1A1A',
+            boxShadow: isPlaceholder ? 'none' : `0 0 12px ${teamColor}50`,
+          }}>
+          {isPlaceholder ? (
+            <svg className="w-7 h-7 opacity-20" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
+            </svg>
+          ) : ps.player.photo_url ? (
+            <img src={ps.player.photo_url} alt={ps.player.last_name} className="w-full h-full object-cover object-top" />
+          ) : (
+            <span style={{ fontFamily: 'Bebas Neue,sans-serif', color: teamColor, fontSize: 18 }}>
+              {ps.player.first_name[0]}{ps.player.last_name[0]}
+            </span>
+          )}
+          {/* Number badge */}
+          {!isPlaceholder && ps.player.number > 0 && (
+            <div className="absolute bottom-0 right-0 w-4 h-4 rounded-tl-md flex items-center justify-center text-[9px] font-black"
+              style={{ background: teamColor, color: 'white' }}>
+              {ps.player.number}
+            </div>
+          )}
+        </div>
+        {/* Name */}
+        <div className="text-center">
+          {isPlaceholder ? (
+            <span className="text-white/20 text-[9px]">En attente</span>
+          ) : (
+            <>
+              <p style={{ fontFamily: 'Bebas Neue,sans-serif', color: 'white', fontSize: 10, lineHeight: 1.2 }}>
+                {ps.player.last_name.toUpperCase()}
+              </p>
+              <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', lineHeight: 1.2 }}>
+                {ps.player.first_name.toUpperCase()}
+              </p>
+              <p style={{ fontFamily: 'Bebas Neue,sans-serif', color: teamColor, fontSize: 10 }}>
+                {ps.votes} pts
+              </p>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const CoachSlot = ({ cs, teamColor, label }: { cs: CoachScore | null; teamColor: string; label: string }) => (
+    <div className="flex items-center gap-2 flex-1 rounded-xl p-2.5"
+      style={{ background: `${teamColor}10`, border: `1px solid ${teamColor}30` }}>
+      <div className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0"
+        style={{ background: cs ? '#1A1A1A' : '#0A0A0A', border: `2px solid ${cs ? teamColor : 'rgba(255,255,255,0.1)'}` }}>
+        {cs?.coach.photo_url
+          ? <img src={cs.coach.photo_url} alt="" className="w-full h-full object-cover object-top" />
+          : <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" style={{ color: cs ? teamColor : 'rgba(255,255,255,0.2)' }}>
+              <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
+            </svg>
+        }
+      </div>
+      <div className="min-w-0">
+        <p className="text-[9px] uppercase tracking-wider" style={{ color: teamColor }}>{label}</p>
+        {cs ? (
+          <>
+            <p style={{ fontFamily: 'Bebas Neue,sans-serif', color: 'white', fontSize: 12, lineHeight: 1.2 }}>
+              {cs.coach.first_name} {cs.coach.last_name}
+            </p>
+          </>
+        ) : (
+          <p className="text-white/25 text-[10px]">En attente</p>
+        )}
+      </div>
+    </div>
+  );
+
+  const previewUrl = `${siteUrl}/admin?preview=equipes`;
+
+  return (
+    <div className="flex flex-col gap-6">
+      {/* Instructions */}
+      <div className="bg-[#0A0A0A] border border-[#E8651A]/30 rounded-xl p-4 flex items-start gap-3">
+        <span className="text-2xl flex-shrink-0">📸</span>
+        <div>
+          <p className="text-white font-semibold text-sm">Visuel Réseaux Sociaux</p>
+          <p className="text-white/50 text-xs mt-1">
+            Ce panneau affiche les 5 joueurs les plus votés par équipe et les coachs.
+            Faites une capture d&apos;écran du cadre ci-dessous pour le partager sur les réseaux.
+          </p>
+        </div>
+      </div>
+
+      {/* Bouton rafraîchir */}
+      <button onClick={loadData} className="self-start px-4 py-2 rounded-lg text-sm font-semibold border border-[#1E1E1E] text-white/60 hover:text-white hover:border-[#E8651A] transition-all">
+        🔄 Rafraîchir
+      </button>
+
+      {/* ══════════════════════════════════════════════
+          CARTE RÉSEAUX SOCIAUX — Format Portrait 9:16
+          ══════════════════════════════════════════════ */}
+      <div
+        id="social-card"
+        style={{
+          width: '100%',
+          maxWidth: 420,
+          aspectRatio: '9 / 16',
+          background: 'linear-gradient(180deg, #050A1A 0%, #0A0F24 30%, #0D0D0D 60%, #050505 100%)',
+          borderRadius: 20,
+          overflow: 'hidden',
+          position: 'relative',
+          boxShadow: '0 0 60px rgba(232,101,26,0.2), 0 0 120px rgba(59,158,240,0.1)',
+          border: '1px solid rgba(232,101,26,0.3)',
+          display: 'flex',
+          flexDirection: 'column',
+          fontFamily: 'system-ui, sans-serif',
+        }}
+      >
+        {/* Fond terrain stylisé */}
+        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+          {/* Lumières de stade */}
+          <div style={{ position: 'absolute', top: -40, left: -40, width: 200, height: 200, borderRadius: '50%', background: 'radial-gradient(circle, rgba(232,101,26,0.12) 0%, transparent 70%)' }} />
+          <div style={{ position: 'absolute', top: -40, right: -40, width: 200, height: 200, borderRadius: '50%', background: 'radial-gradient(circle, rgba(59,158,240,0.12) 0%, transparent 70%)' }} />
+          {/* Ligne de terrain bas */}
+          <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 160, background: 'linear-gradient(to top, rgba(232,101,26,0.06) 0%, transparent 100%)' }} />
+          <svg style={{ position: 'absolute', bottom: 0, left: 0, right: 0, width: '100%', height: 100, opacity: 0.12 }} viewBox="0 0 420 100" preserveAspectRatio="none">
+            <path d="M 0 100 L 0 60 A 210 60 0 0 1 420 60 L 420 100 Z" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.5"/>
+            <circle cx="210" cy="100" r="35" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" strokeDasharray="4,3"/>
+            <line x1="0" y1="60" x2="420" y2="60" stroke="rgba(255,255,255,0.2)" strokeWidth="1"/>
+          </svg>
+          {/* Bordure dorée */}
+          <div style={{ position: 'absolute', inset: 8, border: '1px solid rgba(212,175,55,0.2)', borderRadius: 14, pointerEvents: 'none' }} />
+        </div>
+
+        {/* ── HEADER ── */}
+        <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px 16px 10px', gap: 6 }}>
+          {/* Logo club */}
+          <div style={{ width: 52, height: 52, borderRadius: 12, overflow: 'hidden', border: '2px solid rgba(212,175,55,0.5)', background: '#141414', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 16px rgba(212,175,55,0.3)' }}>
+            <img src="/logo.png" alt="CSL" style={{ width: '80%', height: '80%', objectFit: 'contain' }} />
+          </div>
+
+          {/* Titre */}
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 2 }}>
+              <span style={{ color: '#D4AF37', fontSize: 11 }}>★</span>
+              <p style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 11, color: '#D4AF37', letterSpacing: '0.25em', margin: 0 }}>CSL BASKET ST VALLIER</p>
+              <span style={{ color: '#D4AF37', fontSize: 11 }}>★</span>
+            </div>
+            <h1 style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 32, color: 'white', letterSpacing: '0.05em', lineHeight: 1, margin: 0, textShadow: '0 0 30px rgba(232,101,26,0.5)' }}>
+              ÉQUIPE SÉLECTIONNÉE
+            </h1>
+            <p style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 16, color: '#E8651A', letterSpacing: '0.1em', margin: 0, lineHeight: 1.2 }}>
+              ★ AU {eventName} ★
+            </p>
+          </div>
+
+          <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', textAlign: 'center', margin: 0, lineHeight: 1.4 }}>
+            Vous pourrez <span style={{ color: '#E8651A', fontWeight: 700 }}>voter</span> pour votre 5 de départ sur place
+          </p>
+        </div>
+
+        {/* ── ÉQUIPE 1 ── */}
+        <div style={{ position: 'relative', zIndex: 2, margin: '6px 12px', borderRadius: 14, overflow: 'hidden', background: 'rgba(232,101,26,0.06)', border: '1px solid rgba(232,101,26,0.35)' }}>
+          {/* Header équipe */}
+          <div style={{ background: 'linear-gradient(90deg, rgba(232,101,26,0.8) 0%, rgba(232,101,26,0.4) 100%)', padding: '5px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <p style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 14, color: 'white', letterSpacing: '0.2em', margin: 0 }}>ÉQUIPE 1</p>
+          </div>
+          {/* Joueurs */}
+          <div style={{ display: 'flex', justifyContent: 'space-around', padding: '10px 8px 8px', gap: 4 }}>
+            {pad5(top5_1).map((ps, i) => (
+              <PlayerSlot key={ps.player.id} ps={ps} teamColor="#E8651A" index={i} />
+            ))}
+          </div>
+        </div>
+
+        {/* ── ÉQUIPE 2 ── */}
+        <div style={{ position: 'relative', zIndex: 2, margin: '6px 12px', borderRadius: 14, overflow: 'hidden', background: 'rgba(59,158,240,0.06)', border: '1px solid rgba(59,158,240,0.35)' }}>
+          {/* Header équipe */}
+          <div style={{ background: 'linear-gradient(90deg, rgba(59,158,240,0.8) 0%, rgba(59,158,240,0.4) 100%)', padding: '5px 12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <p style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 14, color: 'white', letterSpacing: '0.2em', margin: 0 }}>ÉQUIPE 2</p>
+          </div>
+          {/* Joueurs */}
+          <div style={{ display: 'flex', justifyContent: 'space-around', padding: '10px 8px 8px', gap: 4 }}>
+            {pad5(top5_2).map((ps, i) => (
+              <PlayerSlot key={ps.player.id} ps={ps} teamColor="#3B9EF0" index={i} />
+            ))}
+          </div>
+        </div>
+
+        {/* ── COACHS ── */}
+        <div style={{ position: 'relative', zIndex: 2, display: 'flex', gap: 8, margin: '4px 12px 8px', flexShrink: 0 }}>
+          <CoachSlot cs={headCoach1} teamColor="#E8651A" label="Coach Équipe 1" />
+          <CoachSlot cs={headCoach2} teamColor="#3B9EF0" label="Coach Équipe 2" />
+        </div>
+
+        {/* ── FOOTER ── */}
+        <div style={{ position: 'relative', zIndex: 2, marginTop: 'auto', padding: '8px 16px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', margin: 0 }}>🏀 Votez sur place !</p>
+          <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', margin: 0 }}>{siteUrl.replace('https://', '')}</p>
+        </div>
+      </div>
+
+      {/* Guide capture */}
+      <div className="bg-[#141414] border border-[#1E1E1E] rounded-xl p-4 flex flex-col gap-2 max-w-[420px]">
+        <p className="text-white/60 text-xs font-semibold uppercase tracking-wider">📱 Comment partager</p>
+        <ul className="text-white/40 text-xs flex flex-col gap-1">
+          <li>1. Sur mobile : appui long sur l&apos;image → Enregistrer</li>
+          <li>2. Sur PC : clic droit → Enregistrer l&apos;image sous...</li>
+          <li>3. Ou utilisez l&apos;outil capture d&apos;écran de votre appareil</li>
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Onglet Codes ─────────────────────────────── */
 function CodesTab() {
   const [quantity, setQuantity] = useState(50);
   const [generating, setGenerating] = useState(false);
@@ -326,7 +619,6 @@ function CodesTab() {
     const { data } = await supabase.from('voting_codes').select('code,status').order('created_at',{ascending:false}).limit(500);
     if (data) {
       setCodes(data);
-      // Calculer les codes disponibles par plage
       const existingSet = new Set(data.map(c => c.code));
       const r1 = Array.from({length: 200}, (_, i) => String(9501 + i)).filter(c => !existingSet.has(c)).length;
       const r2 = Array.from({length: 20}, (_, i) => String(3911 + i)).filter(c => !existingSet.has(c)).length;
@@ -336,23 +628,17 @@ function CodesTab() {
 
   async function generateCodes() {
     setGenerating(true);
-
-    // ✅ MODIF 1 : Plages fixes — 9501-9700 (200 codes) et 3911-3930 (20 codes)
     const range1 = Array.from({length: 200}, (_, i) => String(9501 + i));
     const range2 = Array.from({length: 20},  (_, i) => String(3911 + i));
-    const allPossible = [...range1, ...range2]; // 220 codes max
-
-    // Récupérer tous les codes existants pour éviter les doublons
+    const allPossible = [...range1, ...range2];
     const { data: existingData } = await supabase.from('voting_codes').select('code');
     const existingSet = new Set((existingData || []).map(c => c.code));
     const available = allPossible.filter(c => !existingSet.has(c));
-
     if (available.length === 0) {
       alert('⚠️ Tous les codes des plages 9501-9700 et 3911-3930 ont déjà été générés !');
       setGenerating(false);
       return;
     }
-
     const toGenerate = available.slice(0, Math.min(quantity, available.length));
     const { error } = await supabase.from('voting_codes').insert(toGenerate.map(code => ({code, status: 'valid'})));
     if (!error) { setGenerated(toGenerate); fetchCodes(); }
@@ -403,7 +689,6 @@ function CodesTab() {
         ))}
       </div>
 
-      {/* ✅ MODIF 1 : info sur les plages disponibles */}
       <div className="bg-[#0A0A0A] border border-[#E8651A]/30 rounded-xl p-4 flex flex-col gap-2">
         <p className="text-[#E8651A] text-xs font-bold uppercase tracking-wider">📌 Plages de codes</p>
         <div className="grid grid-cols-2 gap-3 mt-1">
@@ -1225,6 +1510,7 @@ export default function AdminPage() {
         </div>
         <div className="mb-6"><AdminNav active={tab} onChange={setTab} /></div>
         {tab === 'results'  && <ResultsTab />}
+        {tab === 'equipes'  && <EquipesTab />}
         {tab === 'codes'    && <CodesTab />}
         {tab === 'players'  && <PlayersTab />}
         {tab === 'coaches'  && <CoachesTab />}
