@@ -385,14 +385,11 @@ function EquipesTab() {
         )}
       </div>
       <div style={{ textAlign: 'center', maxWidth: 44 }}>
-        <p style={{ fontFamily: 'Bebas Neue, sans-serif', color: 'white', fontSize: 8, lineHeight: 1.1, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 44 }}>
-          {ps.player.last_name.toUpperCase()}
-        </p>
-        <p style={{ fontSize: 7, color: 'rgba(255,255,255,0.4)', lineHeight: 1, margin: 0 }}>
+        <p style={{ fontSize: 7, color: 'rgba(255,255,255,0.5)', lineHeight: 1.1, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 44 }}>
           {ps.player.first_name.toUpperCase()}
         </p>
-        <p style={{ fontFamily: 'Bebas Neue, sans-serif', color: teamColor, fontSize: 8, margin: 0 }}>
-          {ps.votes}pts
+        <p style={{ fontFamily: 'Bebas Neue, sans-serif', color: 'white', fontSize: 8, lineHeight: 1.1, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 44 }}>
+          {ps.player.last_name.toUpperCase()}
         </p>
       </div>
     </div>
