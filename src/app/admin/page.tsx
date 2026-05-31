@@ -384,12 +384,9 @@ function EquipesTab() {
           </div>
         )}
       </div>
-      <div style={{ textAlign: 'center', maxWidth: 44 }}>
-        <p style={{ fontSize: 7, color: 'rgba(255,255,255,0.5)', lineHeight: 1.1, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 44 }}>
-          {ps.player.first_name.toUpperCase()}
-        </p>
-        <p style={{ fontFamily: 'Bebas Neue, sans-serif', color: 'white', fontSize: 8, lineHeight: 1.1, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 44 }}>
-          {ps.player.last_name.toUpperCase()}
+      <div style={{ textAlign: 'center', maxWidth: 52 }}>
+        <p style={{ fontFamily: 'Bebas Neue, sans-serif', color: 'white', fontSize: 9, lineHeight: 1.1, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 52 }}>
+          {ps.player.first_name.toUpperCase()} <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 7, fontFamily: 'system-ui' }}>{ps.player.last_name.toUpperCase()}</span>
         </p>
       </div>
     </div>
@@ -456,7 +453,7 @@ function EquipesTab() {
           width: '100%',
           maxWidth: 420,
           background: 'linear-gradient(180deg, #050A1A 0%, #0A0F24 25%, #0D0D0D 55%, #050505 100%)',
-          borderRadius: 20,
+          borderRadius: 0,
           overflow: 'hidden',
           position: 'relative',
           boxShadow: '0 0 60px rgba(232,101,26,0.2), 0 0 120px rgba(59,158,240,0.1)',
@@ -476,12 +473,12 @@ function EquipesTab() {
             <path d="M 0 80 L 0 48 A 210 48 0 0 1 420 48 L 420 80 Z" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.5"/>
             <circle cx="210" cy="80" r="28" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" strokeDasharray="4,3"/>
           </svg>
-          <div style={{ position: 'absolute', inset: 8, border: '1px solid rgba(212,175,55,0.15)', borderRadius: 14, pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', inset: 8, border: '1px solid rgba(212,175,55,0.15)', borderRadius: 0, pointerEvents: 'none' }} />
         </div>
 
         {/* ── HEADER ── */}
         <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '16px 16px 8px', gap: 4 }}>
-          <div style={{ width: 44, height: 44, borderRadius: 10, overflow: 'hidden', border: '2px solid rgba(212,175,55,0.5)', background: '#141414', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 14px rgba(212,175,55,0.3)' }}>
+          <div style={{ width: 90, height: 90, borderRadius: 0, overflow: 'hidden', border: '2px solid rgba(212,175,55,0.5)', background: '#141414', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 20px rgba(212,175,55,0.4)' }}>
             <img src="/logo.png" alt="CSL" style={{ width: '80%', height: '80%', objectFit: 'contain' }} />
           </div>
           <div style={{ textAlign: 'center' }}>
@@ -500,7 +497,7 @@ function EquipesTab() {
         </div>
 
         {/* ── ÉQUIPE 1 ── */}
-        <div style={{ position: 'relative', zIndex: 2, margin: '6px 10px 4px', borderRadius: 12, overflow: 'hidden', background: 'rgba(232,101,26,0.06)', border: '1px solid rgba(232,101,26,0.35)' }}>
+        <div style={{ position: 'relative', zIndex: 2, margin: '6px 10px 4px', borderRadius: 0, overflow: 'hidden', background: 'rgba(232,101,26,0.06)', border: '1px solid rgba(232,101,26,0.35)' }}>
           <div style={{ background: 'linear-gradient(90deg, rgba(232,101,26,0.85) 0%, rgba(232,101,26,0.4) 100%)', padding: '4px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <p style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 13, color: 'white', letterSpacing: '0.2em', margin: 0 }}>ÉQUIPE 1</p>
             <p style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 11, color: 'rgba(255,255,255,0.7)', margin: 0 }}>{all1.length} JOUEURS</p>
@@ -509,7 +506,7 @@ function EquipesTab() {
         </div>
 
         {/* ── ÉQUIPE 2 ── */}
-        <div style={{ position: 'relative', zIndex: 2, margin: '4px 10px', borderRadius: 12, overflow: 'hidden', background: 'rgba(59,158,240,0.06)', border: '1px solid rgba(59,158,240,0.35)' }}>
+        <div style={{ position: 'relative', zIndex: 2, margin: '4px 10px', borderRadius: 0, overflow: 'hidden', background: 'rgba(59,158,240,0.06)', border: '1px solid rgba(59,158,240,0.35)' }}>
           <div style={{ background: 'linear-gradient(90deg, rgba(59,158,240,0.85) 0%, rgba(59,158,240,0.4) 100%)', padding: '4px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <p style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 13, color: 'white', letterSpacing: '0.2em', margin: 0 }}>ÉQUIPE 2</p>
             <p style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 11, color: 'rgba(255,255,255,0.7)', margin: 0 }}>{all2.length} JOUEURS</p>
