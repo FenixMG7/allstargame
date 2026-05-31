@@ -362,8 +362,9 @@ function EquipesTab() {
 
   const all1 = scores.filter(s => s.player.team === 1);
   const all2 = scores.filter(s => s.player.team === 2);
-  const headCoach1 = coachScores1[0] || null;
-  const headCoach2 = coachScores2[0] || null;
+  // Tous les coachs des deux équipes (pas de rang, ordre alphabétique)
+  const coaches1 = coachScores1;
+  const coaches2 = coachScores2;
 
   if (loading) return <div className="flex justify-center py-20"><div className="spinner" style={{width:32,height:32,borderWidth:3}} /></div>;
 
@@ -392,21 +393,31 @@ function EquipesTab() {
     </div>
   );
 
-  const CoachSlot = ({ cs, teamColor, label }: { cs: CoachScore | null; teamColor: string; label: string }) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, borderRadius: 10, padding: '6px 8px', background: `${teamColor}10`, border: `1px solid ${teamColor}30` }}>
-      <div style={{ width: 32, height: 32, borderRadius: '50%', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: cs ? '#1A1A1A' : '#0A0A0A', border: `2px solid ${cs ? teamColor : 'rgba(255,255,255,0.1)'}` }}>
-        {cs?.coach.photo_url
+  const CoachItem = ({ cs, teamColor }: { cs: CoachScore; teamColor: string }) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 5, flex: 1 }}>
+      <div style={{ width: 28, height: 28, borderRadius: '50%', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: '#1A1A1A', border: `2px solid ${teamColor}` }}>
+        {cs.coach.photo_url
           ? <img src={cs.coach.photo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
-          : <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24" style={{ color: cs ? teamColor : 'rgba(255,255,255,0.2)' }}>
+          : <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24" style={{ color: teamColor }}>
               <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
             </svg>
         }
       </div>
-      <div style={{ minWidth: 0 }}>
-        <p style={{ fontSize: 8, textTransform: 'uppercase', letterSpacing: '0.1em', color: teamColor, margin: 0 }}>{label}</p>
-        {cs
-          ? <p style={{ fontFamily: 'Bebas Neue, sans-serif', color: 'white', fontSize: 11, lineHeight: 1.2, margin: 0 }}>{cs.coach.first_name} {cs.coach.last_name}</p>
-          : <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)', margin: 0 }}>En attente</p>
+      <p style={{ fontFamily: 'Bebas Neue, sans-serif', color: 'white', fontSize: 10, lineHeight: 1.2, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {cs.coach.first_name} <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 8, fontFamily: 'system-ui' }}>{cs.coach.last_name.toUpperCase()}</span>
+      </p>
+    </div>
+  );
+
+  const CoachesBlock = ({ coaches, teamColor, label }: { coaches: CoachScore[]; teamColor: string; label: string }) => (
+    <div style={{ flex: 1, borderRadius: 0, overflow: 'hidden', background: `${teamColor}08`, border: `1px solid ${teamColor}30` }}>
+      <div style={{ background: `${teamColor}30`, padding: '3px 8px' }}>
+        <p style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 10, color: 'white', letterSpacing: '0.15em', margin: 0 }}>{label}</p>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '5px 7px' }}>
+        {coaches.length === 0
+          ? <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)', margin: 0 }}>En attente</p>
+          : coaches.map(cs => <CoachItem key={cs.coach.id} cs={cs} teamColor={teamColor} />)
         }
       </div>
     </div>
@@ -516,8 +527,8 @@ function EquipesTab() {
 
         {/* ── COACHS ── */}
         <div style={{ position: 'relative', zIndex: 2, display: 'flex', gap: 6, margin: '4px 10px 0' }}>
-          <CoachSlot cs={headCoach1} teamColor="#E8651A" label="Coach Équipe 1" />
-          <CoachSlot cs={headCoach2} teamColor="#3B9EF0" label="Coach Équipe 2" />
+          <CoachesBlock coaches={coaches1} teamColor="#E8651A" label="COACHS ÉQUIPE 1" />
+          <CoachesBlock coaches={coaches2} teamColor="#3B9EF0" label="COACHS ÉQUIPE 2" />
         </div>
 
         {/* ── FOOTER ── */}
