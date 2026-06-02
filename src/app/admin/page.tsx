@@ -354,8 +354,9 @@ function EquipesTab() {
         coach: c, headVotes: hMap[c.id]||0, assistantVotes: aMap[c.id]||0,
         total: (hMap[c.id]||0)*HEAD_WEIGHT + (aMap[c.id]||0)*ASST_WEIGHT,
       });
-      setCoachScores1(co.filter(c=>c.team===1).map(c=>buildCS(c,hc1,ac1)).sort((a,b)=>b.total-a.total));
-      setCoachScores2(co.filter(c=>c.team===2).map(c=>buildCS(c,hc2,ac2)).sort((a,b)=>b.total-a.total));
+      // Tous les coachs triés par votes E1 et E2 (sans filtrage par team)
+      setCoachScores1(co.map(c=>buildCS(c,hc1,ac1)).sort((a,b)=>b.total-a.total));
+      setCoachScores2(co.map(c=>buildCS(c,hc2,ac2)).sort((a,b)=>b.total-a.total));
     }
     setLoading(false);
   }
@@ -416,8 +417,8 @@ function EquipesTab() {
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '5px 7px' }}>
         {coaches.length === 0
-          ? <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)', margin: 0 }}>En attente</p>
-          : coaches.map(cs => <CoachItem key={cs.coach.id} cs={cs} teamColor={teamColor} />)
+          ? <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)', margin: 0 }}>Aucun vote</p>
+          : coaches.slice(0, 2).map(cs => <CoachItem key={cs.coach.id} cs={cs} teamColor={teamColor} />)
         }
       </div>
     </div>
@@ -1138,29 +1139,24 @@ function PlayersTab() {
 /* ─── Onglet Coachs ───────────────────────────── */
 function CoachesTab() {
   const [coaches, setCoaches] = useState<Coach[]>([]);
-  const [form, setForm] = useState({ first_name:'', last_name:'', team: 1 as number });
+  const [form, setForm] = useState({ first_name:'', last_name:'' });
   const [saving, setSaving] = useState(false);
   const [uploadingId, setUploadingId] = useState<string|null>(null);
 
   useEffect(() => { fetchCoaches(); }, []);
 
   async function fetchCoaches() {
-    const { data } = await supabase.from('coaches').select('*').order('team').order('last_name');
+    const { data } = await supabase.from('coaches').select('*').order('last_name');
     if (data) setCoaches(data);
   }
 
   async function addCoach(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
-    await supabase.from('coaches').insert({ ...form, is_active: true });
-    setForm({ first_name:'', last_name:'', team: 1 });
+    await supabase.from('coaches').insert({ first_name: form.first_name.trim(), last_name: form.last_name.trim(), is_active: true });
+    setForm({ first_name:'', last_name:'' });
     fetchCoaches();
     setSaving(false);
-  }
-
-  async function assignTeam(coachId: string, team: number) {
-    await supabase.from('coaches').update({ team }).eq('id', coachId);
-    fetchCoaches();
   }
 
   async function uploadPhoto(coachId: string, file: File) {
@@ -1198,10 +1194,6 @@ function CoachesTab() {
     fetchCoaches();
   }
 
-  const team1 = coaches.filter(c => c.team === 1);
-  const team2 = coaches.filter(c => c.team === 2);
-  const unassigned = coaches.filter(c => !c.team);
-
   return (
     <div className="flex flex-col gap-6">
       <div className="bg-[#141414] border border-[#1E1E1E] rounded-xl p-5">
@@ -1211,20 +1203,6 @@ function CoachesTab() {
             className="bg-[#0A0A0A] border border-[#1E1E1E] rounded-lg px-3 py-2 text-white placeholder:text-white/20 focus:outline-none focus:border-[#E8651A]" />
           <input placeholder="Nom" value={form.last_name} onChange={e => setForm(prev => ({...prev, last_name: e.target.value}))} required
             className="bg-[#0A0A0A] border border-[#1E1E1E] rounded-lg px-3 py-2 text-white placeholder:text-white/20 focus:outline-none focus:border-[#E8651A]" />
-          <div className="col-span-2 flex items-center gap-3">
-            <span className="text-white/50 text-xs uppercase tracking-wider">Équipe :</span>
-            {[1, 2].map(n => (
-              <button key={n} type="button" onClick={() => setForm(prev => ({...prev, team: n}))}
-                className="px-4 py-1.5 rounded-lg text-sm font-bold transition-all"
-                style={{
-                  background: form.team === n ? (n === 1 ? '#E8651A' : '#3B9EF0') : '#1A1A1A',
-                  color: form.team === n ? 'white' : 'rgba(255,255,255,0.4)',
-                  border: `1px solid ${form.team === n ? (n === 1 ? '#E8651A' : '#3B9EF0') : '#333'}`,
-                }}>
-                Équipe {n}
-              </button>
-            ))}
-          </div>
           <button type="submit" disabled={saving}
             className="col-span-2 font-semibold py-2 rounded-lg transition-all disabled:opacity-50"
             style={{background:'#E8651A',color:'white'}}>
@@ -1233,66 +1211,45 @@ function CoachesTab() {
         </form>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        {[{n:1,color:'#E8651A',list:team1},{n:2,color:'#3B9EF0',list:team2}].map(({n,color,list}) => (
-          <div key={n} className="rounded-xl p-3 flex flex-col gap-1" style={{background:`${color}0c`,border:`1px solid ${color}28`}}>
-            <span style={{fontFamily:'Bebas Neue,sans-serif',color,fontSize:13,letterSpacing:'0.1em'}}>ÉQUIPE {n}</span>
-            <span style={{fontFamily:'Bebas Neue,sans-serif',color}} className="text-2xl">{list.length}</span>
-            <span className="text-white/30 text-xs">coach{list.length!==1?'s':''}</span>
+      <div className="bg-[#141414] border border-[#1E1E1E] rounded-xl p-3 flex items-center gap-2">
+        <span style={{fontFamily:'Bebas Neue,sans-serif',color:'#E8651A'}} className="text-2xl">{coaches.length}</span>
+        <span className="text-white/40 text-xs">coach{coaches.length!==1?'s':''} dans le pool — les votants les assigneront aux équipes</span>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        {coaches.map(c => (
+          <div key={c.id} className="bg-[#141414] border border-[#1E1E1E] rounded-xl p-4 flex items-center gap-4">
+            <div className="relative flex-shrink-0">
+              <div className="w-14 h-14 rounded-full overflow-hidden bg-[#0A0A0A] border border-[#1E1E1E] flex items-center justify-center">
+                {c.photo_url
+                  ? <img src={c.photo_url} alt={c.last_name} className="w-full h-full object-cover" />
+                  : <span style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-lg text-[#E8651A]/50">{c.first_name[0]}</span>
+                }
+              </div>
+              <label className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110" style={{background:'#E8651A'}}>
+                {uploadingId === c.id
+                  ? <div className="spinner" style={{width:12,height:12,borderWidth:2,borderColor:'white',borderTopColor:'transparent'}} />
+                  : <span className="text-white text-xs">📷</span>
+                }
+                <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && uploadPhoto(c.id, e.target.files[0])} />
+              </label>
+            </div>
+            <div className="flex-1 min-w-0">
+              <span className="font-semibold text-white truncate block">{c.first_name} {c.last_name}</span>
+              <span className="text-white/30 text-xs mt-0.5 block">🧑‍💼 Coach</span>
+            </div>
+            <div className="flex items-center gap-3 flex-shrink-0">
+              <button onClick={() => toggleActive(c.id, c.is_active)}
+                className="w-10 h-5 rounded-full transition-all relative"
+                style={{background: c.is_active ? '#4ade80' : '#1E1E1E'}}>
+                <span className="absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all"
+                  style={{left: c.is_active ? '22px' : '2px'}} />
+              </button>
+              <button onClick={() => deleteCoach(c.id)} className="text-red-400/40 hover:text-red-400 transition-colors">🗑</button>
+            </div>
           </div>
         ))}
       </div>
-
-      {[
-        {label:'ÉQUIPE 1', color:'#E8651A', list: team1},
-        {label:'ÉQUIPE 2', color:'#3B9EF0', list: team2},
-        {label:'NON ASSIGNÉS', color:'#666', list: unassigned},
-      ].map(({label, color, list}) => list.length > 0 && (
-        <div key={label}>
-          <div className="flex items-center gap-2 mb-2">
-            <div className="h-px flex-1" style={{background:`${color}30`}} />
-            <span style={{fontFamily:'Bebas Neue,sans-serif',color,fontSize:11,letterSpacing:'0.15em'}}>{label}</span>
-            <div className="h-px flex-1" style={{background:`${color}30`}} />
-          </div>
-          <div className="flex flex-col gap-3">
-            {list.map(c => (
-              <div key={c.id} className="bg-[#141414] border border-[#1E1E1E] rounded-xl p-4 flex items-center gap-4">
-                <div className="relative flex-shrink-0">
-                  <div className="w-14 h-14 rounded-full overflow-hidden bg-[#0A0A0A] border border-[#1E1E1E] flex items-center justify-center">
-                    {c.photo_url
-                      ? <img src={c.photo_url} alt={c.last_name} className="w-full h-full object-cover" />
-                      : <span style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-lg text-[#E8651A]/50">{c.first_name[0]}</span>
-                    }
-                  </div>
-                  <label className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center cursor-pointer transition-all hover:scale-110" style={{background:'#E8651A'}}>
-                    {uploadingId === c.id
-                      ? <div className="spinner" style={{width:12,height:12,borderWidth:2,borderColor:'white',borderTopColor:'transparent'}} />
-                      : <span className="text-white text-xs">📷</span>
-                    }
-                    <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files?.[0] && uploadPhoto(c.id, e.target.files[0])} />
-                  </label>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <span className="font-semibold text-white truncate block">{c.first_name} {c.last_name}</span>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-white/30 text-xs">Coach ·</span>
-                    <TeamBadge team={c.team} onChange={(t) => assignTeam(c.id, t)} />
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 flex-shrink-0">
-                  <button onClick={() => toggleActive(c.id, c.is_active)}
-                    className="w-10 h-5 rounded-full transition-all relative"
-                    style={{background: c.is_active ? '#4ade80' : '#1E1E1E'}}>
-                    <span className="absolute top-0.5 w-4 h-4 bg-white rounded-full transition-all"
-                      style={{left: c.is_active ? '22px' : '2px'}} />
-                  </button>
-                  <button onClick={() => deleteCoach(c.id)} className="text-red-400/40 hover:text-red-400 transition-colors">🗑</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
     </div>
   );
 }
