@@ -355,8 +355,8 @@ function EquipesTab() {
         total: (hMap[c.id]||0)*HEAD_WEIGHT + (aMap[c.id]||0)*ASST_WEIGHT,
       });
       // Tous les coachs triés par votes E1 et E2 (sans filtrage par team)
-      setCoachScores1(co.map(c=>buildCS(c,hc1,ac1)).sort((a,b)=>b.total-a.total));
-      setCoachScores2(co.map(c=>buildCS(c,hc2,ac2)).sort((a,b)=>b.total-a.total));
+      setCoachScores1(co.filter(c=>c.team===1).map(c=>buildCS(c,hc1,ac1)).sort((a,b)=>b.total-a.total));
+      setCoachScores2(co.filter(c=>c.team===2).map(c=>buildCS(c,hc2,ac2)).sort((a,b)=>b.total-a.total));
     }
     setLoading(false);
   }
@@ -394,15 +394,11 @@ function EquipesTab() {
     </div>
   );
 
-  // Tous les coachs avec leurs votes E1 et E2
-  const allCoachScores = [...coachScores1].map(cs => {
-    const e2 = coachScores2.find(x => x.coach.id === cs.coach.id);
-    return {
-      coach: cs.coach,
-      e1Votes: cs.headVotes + cs.assistantVotes,
-      e2Votes: (e2?.headVotes ?? 0) + (e2?.assistantVotes ?? 0),
-    };
-  });
+  // Tous les coachs avec leurs votes par équipe (basé sur team pré-assignée)
+  const allCoachScores = [
+    ...coachScores1.map(cs => ({ coach: cs.coach, team: 1 as const, votes: cs.headVotes + cs.assistantVotes })),
+    ...coachScores2.map(cs => ({ coach: cs.coach, team: 2 as const, votes: cs.headVotes + cs.assistantVotes })),
+  ];
 
   const AllCoachesBlock = () => (
     <div style={{ position: 'relative', zIndex: 2, margin: '6px 10px 0', borderRadius: 0, overflow: 'hidden', background: 'rgba(212,175,55,0.06)', border: '1px solid rgba(212,175,55,0.4)' }}>
@@ -414,28 +410,34 @@ function EquipesTab() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, padding: '8px 10px' }}>
         {allCoachScores.length === 0
           ? <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', margin: 0, gridColumn: 'span 2' }}>Aucun coach</p>
-          : allCoachScores.map(({ coach }) => (
-              <div key={coach.id} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '5px 7px', background: 'rgba(212,175,55,0.06)', border: '1px solid rgba(212,175,55,0.2)', borderRadius: 0 }}>
-                {/* Photo carrée 52px */}
-                <div style={{ width: 52, height: 52, borderRadius: 0, overflow: 'hidden', border: '1px solid rgba(212,175,55,0.4)', background: '#1A1A1A', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  {coach.photo_url
-                    ? <img src={coach.photo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
-                    : <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24" style={{ color: 'rgba(212,175,55,0.5)' }}>
-                        <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
-                      </svg>
-                  }
+          : allCoachScores.map(({ coach, team }) => {
+              const tc = team === 1 ? '#E8651A' : '#3B9EF0';
+              return (
+                <div key={coach.id} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '5px 7px', background: `${tc}08`, border: `1px solid ${tc}40`, borderRadius: 0 }}>
+                  {/* Photo carrée 52px */}
+                  <div style={{ width: 52, height: 52, borderRadius: 0, overflow: 'hidden', border: `2px solid ${tc}`, background: '#1A1A1A', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: `0 0 8px ${tc}40` }}>
+                    {coach.photo_url
+                      ? <img src={coach.photo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
+                      : <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24" style={{ color: tc }}>
+                          <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
+                        </svg>
+                    }
+                  </div>
+                  {/* Nom + badge équipe */}
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+                      <span style={{ fontSize: 7, fontWeight: 900, color: tc, background: `${tc}20`, border: `1px solid ${tc}50`, borderRadius: 3, padding: '1px 4px' }}>É{team}</span>
+                    </div>
+                    <p style={{ fontFamily: 'Bebas Neue, sans-serif', color: 'white', fontSize: 10, lineHeight: 1.2, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {coach.first_name.toUpperCase()}
+                    </p>
+                    <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 8, lineHeight: 1.1, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {coach.last_name.toUpperCase()}
+                    </p>
+                  </div>
                 </div>
-                {/* Nom */}
-                <div style={{ minWidth: 0 }}>
-                  <p style={{ fontFamily: 'Bebas Neue, sans-serif', color: 'white', fontSize: 10, lineHeight: 1.2, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {coach.first_name.toUpperCase()}
-                  </p>
-                  <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: 8, lineHeight: 1.1, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {coach.last_name.toUpperCase()}
-                  </p>
-                </div>
-              </div>
-            ))
+              );
+            })
         }
       </div>
     </div>
