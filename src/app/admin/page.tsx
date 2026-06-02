@@ -394,31 +394,66 @@ function EquipesTab() {
     </div>
   );
 
-  const CoachItem = ({ cs, teamColor }: { cs: CoachScore; teamColor: string }) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 5, flex: 1 }}>
-      <div style={{ width: 28, height: 28, borderRadius: '50%', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: '#1A1A1A', border: `2px solid ${teamColor}` }}>
-        {cs.coach.photo_url
-          ? <img src={cs.coach.photo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
-          : <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24" style={{ color: teamColor }}>
-              <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
-            </svg>
-        }
-      </div>
-      <p style={{ fontFamily: 'Bebas Neue, sans-serif', color: 'white', fontSize: 10, lineHeight: 1.2, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-        {cs.coach.first_name} <span style={{ color: 'rgba(255,255,255,0.45)', fontSize: 8, fontFamily: 'system-ui' }}>{cs.coach.last_name.toUpperCase()}</span>
-      </p>
-    </div>
-  );
+  // Tous les coachs avec leurs votes E1 et E2
+  const allCoachScores = [...coachScores1].map(cs => {
+    const e2 = coachScores2.find(x => x.coach.id === cs.coach.id);
+    return {
+      coach: cs.coach,
+      e1Votes: cs.headVotes + cs.assistantVotes,
+      e2Votes: (e2?.headVotes ?? 0) + (e2?.assistantVotes ?? 0),
+    };
+  });
 
-  const CoachesBlock = ({ coaches, teamColor, label }: { coaches: CoachScore[]; teamColor: string; label: string }) => (
-    <div style={{ flex: 1, borderRadius: 0, overflow: 'hidden', background: `${teamColor}08`, border: `1px solid ${teamColor}30` }}>
-      <div style={{ background: `${teamColor}30`, padding: '3px 8px' }}>
-        <p style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 10, color: 'white', letterSpacing: '0.15em', margin: 0 }}>{label}</p>
+  const AllCoachesBlock = () => (
+    <div style={{ position: 'relative', zIndex: 2, margin: '6px 10px 0', borderRadius: 0, overflow: 'hidden', background: 'rgba(212,175,55,0.06)', border: '1px solid rgba(212,175,55,0.4)' }}>
+      {/* Header */}
+      <div style={{ background: 'linear-gradient(90deg, rgba(212,175,55,0.75) 0%, rgba(212,175,55,0.3) 100%)', padding: '5px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <p style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 13, color: 'white', letterSpacing: '0.2em', margin: 0 }}>🧑‍💼 COACHS</p>
+        <p style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 11, color: 'rgba(255,255,255,0.6)', margin: 0 }}>{allCoachScores.length} COACHES</p>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, padding: '5px 7px' }}>
-        {coaches.length === 0
-          ? <p style={{ fontSize: 9, color: 'rgba(255,255,255,0.25)', margin: 0 }}>Aucun vote</p>
-          : coaches.slice(0, 2).map(cs => <CoachItem key={cs.coach.id} cs={cs} teamColor={teamColor} />)
+      {/* Rangée coachs — un par ligne, grands */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+        {allCoachScores.length === 0
+          ? <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', margin: '10px 14px' }}>Aucun coach</p>
+          : allCoachScores.map(({ coach, e1Votes, e2Votes }, i) => {
+              const totalVotes = e1Votes + e2Votes;
+              const dominantColor = e1Votes > e2Votes ? '#E8651A' : e2Votes > e1Votes ? '#3B9EF0' : totalVotes > 0 ? 'rgba(212,175,55,0.8)' : 'rgba(255,255,255,0.2)';
+              return (
+                <div key={coach.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '8px 14px',
+                  borderTop: i > 0 ? '1px solid rgba(255,255,255,0.06)' : 'none',
+                  background: totalVotes > 0 ? `${dominantColor}08` : 'transparent',
+                }}>
+                  {/* Photo */}
+                  <div style={{ width: 44, height: 44, borderRadius: '50%', overflow: 'hidden', border: `2px solid ${dominantColor}`, background: '#1A1A1A', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: totalVotes > 0 ? `0 0 10px ${dominantColor}50` : 'none' }}>
+                    {coach.photo_url
+                      ? <img src={coach.photo_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
+                      : <svg width="22" height="22" fill="currentColor" viewBox="0 0 24 24" style={{ color: dominantColor }}>
+                          <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
+                        </svg>
+                    }
+                  </div>
+                  {/* Nom */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontFamily: 'Bebas Neue, sans-serif', color: 'white', fontSize: 13, lineHeight: 1.2, margin: 0 }}>
+                      {coach.first_name.toUpperCase()} <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 10 }}>{coach.last_name.toUpperCase()}</span>
+                    </p>
+                  </div>
+                  {/* Votes E1 / E2 */}
+                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '3px 8px', borderRadius: 6, background: e1Votes > 0 ? 'rgba(232,101,26,0.2)' : 'rgba(255,255,255,0.04)', border: `1px solid ${e1Votes > 0 ? 'rgba(232,101,26,0.5)' : 'rgba(255,255,255,0.08)'}` }}>
+                      <span style={{ fontSize: 7, color: '#E8651A', fontWeight: 700, letterSpacing: '0.05em' }}>É1</span>
+                      <span style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 14, color: e1Votes > 0 ? '#E8651A' : 'rgba(255,255,255,0.2)', lineHeight: 1 }}>{e1Votes}</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '3px 8px', borderRadius: 6, background: e2Votes > 0 ? 'rgba(59,158,240,0.2)' : 'rgba(255,255,255,0.04)', border: `1px solid ${e2Votes > 0 ? 'rgba(59,158,240,0.5)' : 'rgba(255,255,255,0.08)'}` }}>
+                      <span style={{ fontSize: 7, color: '#3B9EF0', fontWeight: 700, letterSpacing: '0.05em' }}>É2</span>
+                      <span style={{ fontFamily: 'Bebas Neue, sans-serif', fontSize: 14, color: e2Votes > 0 ? '#3B9EF0' : 'rgba(255,255,255,0.2)', lineHeight: 1 }}>{e2Votes}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
         }
       </div>
     </div>
@@ -527,10 +562,7 @@ function EquipesTab() {
         </div>
 
         {/* ── COACHS ── */}
-        <div style={{ position: 'relative', zIndex: 2, display: 'flex', gap: 6, margin: '4px 10px 0' }}>
-          <CoachesBlock coaches={coaches1} teamColor="#E8651A" label="COACHS ÉQUIPE 1" />
-          <CoachesBlock coaches={coaches2} teamColor="#3B9EF0" label="COACHS ÉQUIPE 2" />
-        </div>
+        <AllCoachesBlock />
 
         {/* ── FOOTER ── */}
         <div style={{ position: 'relative', zIndex: 2, marginTop: 8, padding: '0 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
