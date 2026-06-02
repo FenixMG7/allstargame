@@ -12,7 +12,6 @@ interface Coach {
   last_name: string;
   photo_url: string | null;
   is_active: boolean;
-  team?: number | null;
 }
 
 /* ─── Modal règles ───────────────────────────── */
@@ -29,10 +28,10 @@ function RulesModal({ onAccept }: { onAccept: () => void }) {
         </div>
         <div className="px-6 py-5 flex flex-col gap-4">
           {[
-            { icon: '🏀', title: '5 joueurs par équipe', desc: 'Sélectionnez 5 joueurs dans l\'Équipe 1, puis 5 dans l\'Équipe 2.' },
-            { icon: '🧑‍💼', title: 'Coachs par équipe', desc: 'Votez pour un coach principal et un adjoint pour chaque équipe.' },
-            { icon: '🔒', title: 'Vote unique', desc: 'Votre code ne peut être utilisé qu\'une seule fois. Le vote est définitif.' },
-            { icon: '🏆', title: 'Résultats', desc: 'Les 5 joueurs les plus votés par équipe formeront les 5 majeurs !' },
+            { icon: '🏀', title: '5 joueurs par équipe', desc: "Sélectionnez 5 joueurs dans l'Équipe 1, puis 5 dans l'Équipe 2." },
+            { icon: '🧑‍💼', title: 'Assignez les coachs', desc: "Tous les coachs sont affichés — choisissez dans quelle équipe chacun doit jouer." },
+            { icon: '🔒', title: 'Vote unique', desc: "Votre code ne peut être utilisé qu'une seule fois. Le vote est définitif." },
+            { icon: '🏆', title: 'Résultats', desc: "Les 5 joueurs les plus votés par équipe formeront les 5 majeurs !" },
           ].map(r => (
             <div key={r.title} className="flex gap-3 items-start">
               <span className="text-2xl flex-shrink-0">{r.icon}</span>
@@ -59,15 +58,16 @@ function RulesModal({ onAccept }: { onAccept: () => void }) {
 function PlayerCard({ player, selected, canSelect, teamColor, onClick }: {
   player: Player; selected: boolean; canSelect: boolean; teamColor: string; onClick: () => void;
 }) {
-  const borderColor = selected ? teamColor : '#1E1E1E';
-  const bg = selected ? `${teamColor}1a` : '#141414';
-  const shadow = selected ? `0 0 0 2px ${teamColor}, 0 0 20px ${teamColor}50` : 'none';
   return (
     <button onClick={onClick} disabled={!canSelect && !selected}
       className="group relative flex flex-col items-center gap-2 p-3 rounded-2xl border transition-all duration-300"
-      style={{ borderColor, background: bg, boxShadow: shadow,
+      style={{
+        borderColor: selected ? teamColor : '#1E1E1E',
+        background: selected ? `${teamColor}1a` : '#141414',
+        boxShadow: selected ? `0 0 0 2px ${teamColor}, 0 0 20px ${teamColor}50` : 'none',
         opacity: (!canSelect && !selected) ? 0.4 : 1,
-        cursor: (!canSelect && !selected) ? 'not-allowed' : 'pointer' }}>
+        cursor: (!canSelect && !selected) ? 'not-allowed' : 'pointer',
+      }}>
       {selected && (
         <div className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center z-10" style={{background: teamColor}}>
           <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
@@ -76,7 +76,7 @@ function PlayerCard({ player, selected, canSelect, teamColor, onClick }: {
         </div>
       )}
       <div className="absolute top-2 left-2 w-7 h-7 rounded-full bg-[#1E1E1E] flex items-center justify-center z-10">
-          <span style={{fontFamily:'Bebas Neue,sans-serif', color: teamColor}} className="text-sm leading-none">{player.number}</span>
+        <span style={{fontFamily:'Bebas Neue,sans-serif', color: teamColor}} className="text-sm leading-none">{player.number}</span>
       </div>
       <div className="relative mt-3 w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden bg-[#1E1E1E] flex items-center justify-center">
         {player.photo_url
@@ -85,66 +85,83 @@ function PlayerCard({ player, selected, canSelect, teamColor, onClick }: {
         }
       </div>
       <div className="flex flex-col items-center gap-0.5 text-center">
-        <span style={{fontFamily:'Bebas Neue,sans-serif', color: selected ? teamColor : 'white'}} className="text-base sm:text-lg leading-tight">
-          {player.first_name.toUpperCase()}
-        </span>
-        <span style={{fontFamily:'Bebas Neue,sans-serif', color: selected ? teamColor : 'white'}} className="text-base sm:text-lg leading-tight">
-          {player.last_name.toUpperCase()}
-        </span>
+        <span style={{fontFamily:'Bebas Neue,sans-serif', color: selected ? teamColor : 'white'}} className="text-base sm:text-lg leading-tight">{player.first_name.toUpperCase()}</span>
+        <span style={{fontFamily:'Bebas Neue,sans-serif', color: selected ? teamColor : 'white'}} className="text-base sm:text-lg leading-tight">{player.last_name.toUpperCase()}</span>
         <span className="text-xs text-white/40 mt-0.5">{player.position}</span>
       </div>
     </button>
   );
 }
 
-/* ─── Carte coach ────────────────────────────── */
-function CoachCard({ coach, selected, role, teamColor, onClick }: {
-  coach: Coach; selected: boolean; role?: string; teamColor: string; onClick: () => void;
+/* ─── Carte coach avec choix équipe ─────────── */
+function CoachAssignCard({ coach, assigned, onAssign }: {
+  coach: Coach;
+  assigned: 1 | 2 | null;
+  onAssign: (team: 1 | 2) => void;
 }) {
+  const assignedColor = assigned === 1 ? '#E8651A' : assigned === 2 ? '#3B9EF0' : null;
+
   return (
-    <button onClick={onClick}
-      className="relative flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all duration-300 w-full"
+    <div className="flex flex-col rounded-2xl border overflow-hidden transition-all duration-300"
       style={{
-        borderColor: selected ? teamColor : '#1E1E1E',
-        background: selected ? `${teamColor}1a` : '#141414',
-        boxShadow: selected ? `0 0 0 2px ${teamColor}, 0 0 20px ${teamColor}50` : 'none',
+        borderColor: assignedColor ?? '#1E1E1E',
+        background: assignedColor ? `${assignedColor}0d` : '#141414',
+        boxShadow: assignedColor ? `0 0 0 2px ${assignedColor}, 0 0 20px ${assignedColor}40` : 'none',
       }}>
-      {selected && role && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2 text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider z-10 whitespace-nowrap" style={{background: teamColor}}>
-          {role}
+      {/* Photo + nom */}
+      <div className="flex flex-col items-center gap-2 p-4 pb-3">
+        <div className="w-20 h-20 rounded-full overflow-hidden bg-[#1E1E1E] flex items-center justify-center border-2 transition-all"
+          style={{borderColor: assignedColor ?? '#2a2a2a'}}>
+          {coach.photo_url
+            ? <img src={coach.photo_url} alt={coach.last_name} className="w-full h-full object-cover object-top" />
+            : <span style={{fontFamily:'Bebas Neue,sans-serif', color: assignedColor ?? 'rgba(255,255,255,0.3)'}} className="text-3xl">
+                {coach.first_name[0]}{coach.last_name[0]}
+              </span>
+          }
         </div>
-      )}
-      {selected && (
-        <div className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center z-10" style={{background: teamColor}}>
-          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
+        <div className="text-center">
+          <p style={{fontFamily:'Bebas Neue,sans-serif', color: assignedColor ?? 'white'}} className="text-lg leading-tight">{coach.first_name.toUpperCase()}</p>
+          <p style={{fontFamily:'Bebas Neue,sans-serif', color: assignedColor ?? 'white'}} className="text-lg leading-tight">{coach.last_name.toUpperCase()}</p>
         </div>
-      )}
-      <div className="w-20 h-20 rounded-full overflow-hidden bg-[#1E1E1E] flex items-center justify-center border-2"
-        style={{borderColor: selected ? teamColor : '#1E1E1E'}}>
-        {coach.photo_url
-          ? <img src={coach.photo_url} alt={coach.last_name} className="w-full h-full object-cover object-top" />
-          : <span style={{fontFamily:'Bebas Neue,sans-serif',color:`${teamColor}80`}} className="text-3xl">{coach.first_name[0]}{coach.last_name[0]}</span>
-        }
       </div>
-      <div className="text-center">
-        <p style={{fontFamily:'Bebas Neue,sans-serif', color: selected ? teamColor : 'white'}} className="text-lg leading-tight">{coach.first_name.toUpperCase()}</p>
-        <p style={{fontFamily:'Bebas Neue,sans-serif', color: selected ? teamColor : 'white'}} className="text-lg leading-tight">{coach.last_name.toUpperCase()}</p>
+
+      {/* Boutons E1 / E2 */}
+      <div className="flex border-t border-[#1E1E1E]">
+        <button
+          onClick={() => onAssign(1)}
+          className="flex-1 py-3 text-sm font-black tracking-wider transition-all"
+          style={{
+            background: assigned === 1 ? '#E8651A' : 'transparent',
+            color: assigned === 1 ? 'white' : 'rgba(255,255,255,0.3)',
+            borderRight: '1px solid #1E1E1E',
+          }}>
+          ÉQUIPE 1
+        </button>
+        <button
+          onClick={() => onAssign(2)}
+          className="flex-1 py-3 text-sm font-black tracking-wider transition-all"
+          style={{
+            background: assigned === 2 ? '#3B9EF0' : 'transparent',
+            color: assigned === 2 ? 'white' : 'rgba(255,255,255,0.3)',
+          }}>
+          ÉQUIPE 2
+        </button>
       </div>
-    </button>
+    </div>
   );
 }
 
 /* ─── Modal confirmation ─────────────────────── */
-function ConfirmModal({ t1Players, t1Head, t1Asst, t2Players, t2Head, t2Asst, onConfirm, onCancel, loading }: {
-  t1Players: Player[]; t1Head: Coach; t1Asst: Coach;
-  t2Players: Player[]; t2Head: Coach; t2Asst: Coach;
+function ConfirmModal({ t1Players, t2Players, t1Coaches, t2Coaches, allCoaches, onConfirm, onCancel, loading }: {
+  t1Players: Player[]; t2Players: Player[];
+  t1Coaches: string[]; t2Coaches: string[];
+  allCoaches: Coach[];
   onConfirm: () => void; onCancel: () => void; loading: boolean;
 }) {
-  const TeamSection = ({ label, color, players, head, asst }: {
-    label: string; color: string;
-    players: Player[]; head: Coach; asst: Coach;
+  const getCoach = (id: string) => allCoaches.find(c => c.id === id);
+
+  const TeamSection = ({ label, color, players, coachIds }: {
+    label: string; color: string; players: Player[]; coachIds: string[];
   }) => (
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-2">
@@ -160,15 +177,19 @@ function ConfirmModal({ t1Players, t1Head, t1Asst, t2Players, t2Head, t2Asst, on
           <span className="flex-1 font-semibold text-white text-xs">{p.first_name} {p.last_name} <span className="text-white/30">#{p.number}</span></span>
         </div>
       ))}
-      {[{c:head,r:'🧑‍💼 Principal'},{c:asst,r:'👨‍💼 Adjoint'}].map(({c,r}) => (
-        <div key={c.id} className="flex items-center gap-2 p-2 rounded-lg border border-[#1E1E1E] bg-[#0A0A0A]">
-          <div className="w-7 h-7 rounded-full overflow-hidden bg-[#1E1E1E] flex-shrink-0 flex items-center justify-center">
-            {c.photo_url ? <img src={c.photo_url} alt="" className="w-full h-full object-cover"/> : <span style={{fontFamily:'Bebas Neue,sans-serif',color,fontSize:10}}>{c.first_name[0]}</span>}
+      {coachIds.map(id => {
+        const c = getCoach(id);
+        if (!c) return null;
+        return (
+          <div key={id} className="flex items-center gap-2 p-2 rounded-lg border border-[#1E1E1E] bg-[#0A0A0A]">
+            <span className="text-base">🧑‍💼</span>
+            <div className="w-7 h-7 rounded-full overflow-hidden bg-[#1E1E1E] flex-shrink-0 flex items-center justify-center">
+              {c.photo_url ? <img src={c.photo_url} alt="" className="w-full h-full object-cover"/> : <span style={{fontFamily:'Bebas Neue,sans-serif',color,fontSize:10}}>{c.first_name[0]}</span>}
+            </div>
+            <span className="flex-1 font-semibold text-white text-xs">{c.first_name} {c.last_name}</span>
           </div>
-          <span className="flex-1 font-semibold text-white text-xs">{c.first_name} {c.last_name}</span>
-          <span className="text-[10px] text-white/40 px-1.5 py-0.5 rounded-full border border-[#1E1E1E] whitespace-nowrap">{r}</span>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 
@@ -179,9 +200,9 @@ function ConfirmModal({ t1Players, t1Head, t1Asst, t2Players, t2Head, t2Asst, on
           <h2 style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-3xl text-white">Confirmer votre vote</h2>
           <p className="text-white/50 text-sm mt-1">Ce vote est définitif et ne pourra pas être modifié.</p>
         </div>
-        <TeamSection label="ÉQUIPE 1" color="#E8651A" players={t1Players} head={t1Head} asst={t1Asst} />
+        <TeamSection label="ÉQUIPE 1" color="#E8651A" players={t1Players} coachIds={t1Coaches} />
         <div className="h-px bg-[#1E1E1E]" />
-        <TeamSection label="ÉQUIPE 2" color="#3B9EF0" players={t2Players} head={t2Head} asst={t2Asst} />
+        <TeamSection label="ÉQUIPE 2" color="#3B9EF0" players={t2Players} coachIds={t2Coaches} />
         <div className="flex gap-3">
           <button onClick={onCancel} className="flex-1 py-3 rounded-xl border border-[#1E1E1E] text-white/60 hover:text-white font-semibold transition-all">Modifier</button>
           <button onClick={onConfirm} disabled={loading}
@@ -195,29 +216,20 @@ function ConfirmModal({ t1Players, t1Head, t1Asst, t2Players, t2Head, t2Asst, on
   );
 }
 
-/* ─── Page principale vote ───────────────────── */
-type Step =
-  | 't1_select' | 't1_headcoach' | 't1_assistantcoach'
-  | 't2_select' | 't2_headcoach' | 't2_assistantcoach';
+/* ─── Page principale ────────────────────────── */
+type Step = 't1_select' | 't2_select' | 'coaches_assign';
 
 export default function VotePage() {
   const router = useRouter();
 
-  // Data
   const [t1Players, setT1Players] = useState<Player[]>([]);
   const [t2Players, setT2Players] = useState<Player[]>([]);
-  const [t1Coaches, setT1Coaches] = useState<Coach[]>([]);
-  const [t2Coaches, setT2Coaches] = useState<Coach[]>([]);
+  const [allCoaches, setAllCoaches] = useState<Coach[]>([]);
 
-  // Sélections E1
   const [t1SelectedIds, setT1SelectedIds] = useState<string[]>([]);
-  const [t1HeadId, setT1HeadId] = useState<string | null>(null);
-  const [t1AsstId, setT1AsstId] = useState<string | null>(null);
-
-  // Sélections E2
   const [t2SelectedIds, setT2SelectedIds] = useState<string[]>([]);
-  const [t2HeadId, setT2HeadId] = useState<string | null>(null);
-  const [t2AsstId, setT2AsstId] = useState<string | null>(null);
+  // coachAssignments : coachId -> 1 | 2 | null
+  const [coachAssignments, setCoachAssignments] = useState<Record<string, 1 | 2 | null>>({});
 
   const [step, setStep] = useState<Step>('t1_select');
   const [showConfirm, setShowConfirm] = useState(false);
@@ -231,18 +243,22 @@ export default function VotePage() {
     Promise.all([
       supabase.from('players').select('*').eq('is_active', true).eq('team', 1).order('last_name'),
       supabase.from('players').select('*').eq('is_active', true).eq('team', 2).order('last_name'),
-      supabase.from('coaches').select('*').eq('is_active', true).eq('team', 1).order('last_name'),
-      supabase.from('coaches').select('*').eq('is_active', true).eq('team', 2).order('last_name'),
-    ]).then(([{data:p1},{data:p2},{data:c1},{data:c2}]) => {
+      supabase.from('coaches').select('*').eq('is_active', true).order('last_name'),
+    ]).then(([{data:p1},{data:p2},{data:co}]) => {
       if (p1) setT1Players(p1);
       if (p2) setT2Players(p2);
-      if (c1) setT1Coaches(c1);
-      if (c2) setT2Coaches(c2);
+      if (co) {
+        setAllCoaches(co);
+        // Init assignments à null
+        const init: Record<string, 1 | 2 | null> = {};
+        co.forEach(c => { init[c.id] = null; });
+        setCoachAssignments(init);
+      }
       setLoadingData(false);
     });
   }, [router]);
 
-  function togglePlayer(team: 1|2, id: string) {
+  function togglePlayer(team: 1 | 2, id: string) {
     if (team === 1) {
       setT1SelectedIds(prev => prev.includes(id) ? prev.filter(p => p !== id) : prev.length >= MAX_PLAYERS ? prev : [...prev, id]);
     } else {
@@ -250,102 +266,108 @@ export default function VotePage() {
     }
   }
 
+  function assignCoach(coachId: string, team: 1 | 2) {
+    setCoachAssignments(prev => ({
+      ...prev,
+      [coachId]: prev[coachId] === team ? null : team,
+    }));
+  }
+
+  const t1CoachIds = Object.entries(coachAssignments).filter(([, t]) => t === 1).map(([id]) => id);
+  const t2CoachIds = Object.entries(coachAssignments).filter(([, t]) => t === 2).map(([id]) => id);
+  const allAssigned = allCoaches.length > 0 && allCoaches.every(c => coachAssignments[c.id] !== null);
+  const eachTeamHasCoach = t1CoachIds.length >= 1 && t2CoachIds.length >= 1;
+
   async function submitVote() {
     setSubmitting(true);
     const codeId = sessionStorage.getItem('vote_code_id');
-    // Combiner les 10 joueurs : 5 E1 + 5 E2
     const allPlayerIds = [...t1SelectedIds, ...t2SelectedIds];
     const { error } = await supabase.rpc('submit_vote', {
-      p_code_id: codeId,
-      p_player_1: allPlayerIds[0],
-      p_player_2: allPlayerIds[1],
-      p_player_3: allPlayerIds[2],
-      p_player_4: allPlayerIds[3],
-      p_player_5: allPlayerIds[4],
-      p_bonus_player: null,
-      p_head_coach: t1HeadId,
-      p_assistant_coach: t1AsstId,
-      p_player_6: allPlayerIds[5],
-      p_player_7: allPlayerIds[6],
-      p_player_8: allPlayerIds[7],
-      p_player_9: allPlayerIds[8],
-      p_player_10: allPlayerIds[9],
-      p_bonus_player_2: null,
-      p_head_coach_2: t2HeadId,
-      p_assistant_coach_2: t2AsstId,
+      p_code_id:           codeId,
+      p_player_1:          allPlayerIds[0] ?? null,
+      p_player_2:          allPlayerIds[1] ?? null,
+      p_player_3:          allPlayerIds[2] ?? null,
+      p_player_4:          allPlayerIds[3] ?? null,
+      p_player_5:          allPlayerIds[4] ?? null,
+      p_bonus_player:      null,
+      p_head_coach:        t1CoachIds[0]   ?? null,
+      p_assistant_coach:   t1CoachIds[1]   ?? null,
+      p_player_6:          allPlayerIds[5] ?? null,
+      p_player_7:          allPlayerIds[6] ?? null,
+      p_player_8:          allPlayerIds[7] ?? null,
+      p_player_9:          allPlayerIds[8] ?? null,
+      p_player_10:         allPlayerIds[9] ?? null,
+      p_bonus_player_2:    null,
+      p_head_coach_2:      t2CoachIds[0]   ?? null,
+      p_assistant_coach_2: t2CoachIds[1]   ?? null,
     });
     setSubmitting(false);
     if (error) { alert('Une erreur est survenue. Veuillez réessayer.'); console.error(error); return; }
     sessionStorage.removeItem('vote_code_id');
     sessionStorage.removeItem('vote_code');
 
-    const t1Selected = t1Players.filter(p => t1SelectedIds.includes(p.id));
-    const t2Selected = t2Players.filter(p => t2SelectedIds.includes(p.id));
     const result = {
-      t1Players: t1Selected,
-      t1HeadCoach: t1Coaches.find(c => c.id === t1HeadId)!,
-      t1AssistantCoach: t1Coaches.find(c => c.id === t1AsstId)!,
-      t2Players: t2Selected,
-      t2HeadCoach: t2Coaches.find(c => c.id === t2HeadId)!,
-      t2AssistantCoach: t2Coaches.find(c => c.id === t2AsstId)!,
+      t1Players: t1Players.filter(p => t1SelectedIds.includes(p.id)),
+      t2Players: t2Players.filter(p => t2SelectedIds.includes(p.id)),
+      t1Coaches: allCoaches.filter(c => t1CoachIds.includes(c.id)),
+      t2Coaches: allCoaches.filter(c => t2CoachIds.includes(c.id)),
     };
     sessionStorage.setItem('vote_result', JSON.stringify(result));
     router.push('/merci');
   }
 
-  // Dérivés
   const t1Selected = t1Players.filter(p => t1SelectedIds.includes(p.id));
   const t2Selected = t2Players.filter(p => t2SelectedIds.includes(p.id));
 
-  // Étapes & labels
-  const STEPS: Step[] = ['t1_select','t1_headcoach','t1_assistantcoach','t2_select','t2_headcoach','t2_assistantcoach'];
+  const STEPS: Step[] = ['t1_select', 't2_select', 'coaches_assign'];
   const currentIdx = STEPS.indexOf(step);
 
-  const isT1 = step.startsWith('t1');
-  const teamColor = isT1 ? '#E8651A' : '#3B9EF0';
-  const teamLabel = isT1 ? 'ÉQUIPE 1' : 'ÉQUIPE 2';
+  const stepColors: Record<Step, string> = {
+    t1_select:      '#E8651A',
+    t2_select:      '#3B9EF0',
+    coaches_assign: '#D4AF37',
+  };
+  const stepColor = stepColors[step];
 
   const stepMeta: Record<Step, { title: string; sub: string }> = {
-    t1_select:        { title: 'ÉQUIPE 1 — 5 JOUEURS',     sub: 'Sélectionnez exactement 5 joueurs' },
-    t1_headcoach:     { title: 'ÉQUIPE 1 — COACH PRINCIPAL', sub: 'Choisissez le coach principal' },
-    t1_assistantcoach:{ title: 'ÉQUIPE 1 — COACH ADJOINT',   sub: 'Choisissez le coach adjoint' },
-    t2_select:        { title: 'ÉQUIPE 2 — 5 JOUEURS',     sub: 'Sélectionnez exactement 5 joueurs' },
-    t2_headcoach:     { title: 'ÉQUIPE 2 — COACH PRINCIPAL', sub: 'Choisissez le coach principal' },
-    t2_assistantcoach:{ title: 'ÉQUIPE 2 — COACH ADJOINT',   sub: 'Choisissez le coach adjoint' },
+    t1_select:      { title: 'ÉQUIPE 1 — 5 JOUEURS',  sub: 'Sélectionnez exactement 5 joueurs' },
+    t2_select:      { title: 'ÉQUIPE 2 — 5 JOUEURS',  sub: 'Sélectionnez exactement 5 joueurs' },
+    coaches_assign: { title: 'ASSIGNEZ LES COACHS',   sub: 'Choisissez dans quelle équipe chaque coach doit jouer' },
   };
 
   function goBack() {
     if (currentIdx > 0) setStep(STEPS[currentIdx - 1]);
   }
 
-  // Bouton suivant
   const canProceed =
-    (step === 't1_select'         && t1SelectedIds.length === MAX_PLAYERS) ||
-    (step === 't1_headcoach'      && !!t1HeadId) ||
-    (step === 't1_assistantcoach' && !!t1AsstId) ||
-    (step === 't2_select'         && t2SelectedIds.length === MAX_PLAYERS) ||
-    (step === 't2_headcoach'      && !!t2HeadId) ||
-    (step === 't2_assistantcoach' && !!t2AsstId);
+    (step === 't1_select'      && t1SelectedIds.length === MAX_PLAYERS) ||
+    (step === 't2_select'      && t2SelectedIds.length === MAX_PLAYERS) ||
+    (step === 'coaches_assign' && allAssigned && eachTeamHasCoach);
 
   const nextLabel = () => {
-    if (step === 't1_select')         return t1SelectedIds.length === MAX_PLAYERS ? 'CHOISIR LE COACH →' : `Sélectionnez encore ${MAX_PLAYERS - t1SelectedIds.length} joueur${MAX_PLAYERS - t1SelectedIds.length > 1 ? 's' : ''}`;
-    if (step === 't1_headcoach')      return 'CHOISIR LE COACH ADJOINT →';
-    if (step === 't1_assistantcoach') return 'PASSER À L\'ÉQUIPE 2 →';
-    if (step === 't2_select')         return t2SelectedIds.length === MAX_PLAYERS ? 'CHOISIR LE COACH →' : `Sélectionnez encore ${MAX_PLAYERS - t2SelectedIds.length} joueur${MAX_PLAYERS - t2SelectedIds.length > 1 ? 's' : ''}`;
-    if (step === 't2_headcoach')      return 'CHOISIR LE COACH ADJOINT →';
-    if (step === 't2_assistantcoach') return '✅ VALIDER MON VOTE';
+    if (step === 't1_select') return t1SelectedIds.length === MAX_PLAYERS
+      ? 'PASSER À L\'ÉQUIPE 2 →'
+      : `Sélectionnez encore ${MAX_PLAYERS - t1SelectedIds.length} joueur${MAX_PLAYERS - t1SelectedIds.length > 1 ? 's' : ''}`;
+    if (step === 't2_select') return t2SelectedIds.length === MAX_PLAYERS
+      ? 'CHOISIR LES COACHS →'
+      : `Sélectionnez encore ${MAX_PLAYERS - t2SelectedIds.length} joueur${MAX_PLAYERS - t2SelectedIds.length > 1 ? 's' : ''}`;
+    if (step === 'coaches_assign') {
+      if (!allAssigned) {
+        const remaining = allCoaches.filter(c => coachAssignments[c.id] === null).length;
+        return `Assignez encore ${remaining} coach${remaining > 1 ? 's' : ''}`;
+      }
+      return '✅ VALIDER MON VOTE';
+    }
     return '';
   };
 
   function handleNext() {
-    if (step === 't2_assistantcoach') { setShowConfirm(true); return; }
+    if (step === 'coaches_assign') { setShowConfirm(true); return; }
     setStep(STEPS[currentIdx + 1]);
     window.scrollTo({top:0,behavior:'smooth'});
   }
 
-  const allReady =
-    t1SelectedIds.length === 5 && t1HeadId && t1AsstId &&
-    t2SelectedIds.length === 5 && t2HeadId && t2AsstId;
+  const allReady = t1SelectedIds.length === 5 && t2SelectedIds.length === 5 && allAssigned && eachTeamHasCoach;
 
   if (loadingData) return (
     <div className="min-h-screen flex items-center justify-center">
@@ -367,19 +389,19 @@ export default function VotePage() {
             <div className="flex items-center gap-3">
               <img src="/logo.png" alt="CSL" className="w-8 h-8 object-contain" />
               <div>
-                <h1 style={{fontFamily:'Bebas Neue,sans-serif', color: teamColor}} className="text-2xl sm:text-3xl leading-none">
+                <h1 style={{fontFamily:'Bebas Neue,sans-serif', color: stepColor}} className="text-2xl sm:text-3xl leading-none">
                   {stepMeta[step].title}
                 </h1>
                 <p className="text-white/40 text-xs mt-0.5">{stepMeta[step].sub}</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <span style={{fontFamily:'Bebas Neue,sans-serif', color: teamColor}} className="text-lg">{currentIdx + 1}/6</span>
+              <span style={{fontFamily:'Bebas Neue,sans-serif', color: stepColor}} className="text-lg">{currentIdx + 1}/3</span>
               {currentIdx > 0 && (
                 <button onClick={goBack} className="text-sm text-white/50 hover:text-[#E8651A] transition-colors">← Retour</button>
               )}
               {(step === 't1_select' || step === 't2_select') && (
-                <span style={{fontFamily:'Bebas Neue,sans-serif', color: teamColor}} className="text-4xl leading-none">
+                <span style={{fontFamily:'Bebas Neue,sans-serif', color: stepColor}} className="text-4xl leading-none">
                   {step === 't1_select' ? t1SelectedIds.length : t2SelectedIds.length}
                   <span className="text-white/30 text-2xl">/{MAX_PLAYERS}</span>
                 </span>
@@ -387,24 +409,44 @@ export default function VotePage() {
             </div>
           </div>
 
-          {/* Barre de progression */}
+          {/* Barre progression */}
           <div className="flex gap-1">
-            {STEPS.map((s, i) => {
-              const sColor = s.startsWith('t1') ? '#E8651A' : '#3B9EF0';
-              return (
-                <div key={s} className="h-2 flex-1 rounded-full transition-all duration-500"
-                  style={{ background: i <= currentIdx ? sColor : '#1E1E1E', boxShadow: i <= currentIdx ? `0 0 8px ${sColor}60` : 'none' }} />
-              );
-            })}
+            {STEPS.map((s, i) => (
+              <div key={s} className="h-2 flex-1 rounded-full transition-all duration-500"
+                style={{ background: i <= currentIdx ? stepColors[s] : '#1E1E1E', boxShadow: i <= currentIdx ? `0 0 8px ${stepColors[s]}60` : 'none' }} />
+            ))}
           </div>
 
-          {/* Mini récap sélection courante */}
+          {/* Mini récap joueurs */}
           {(step === 't1_select' || step === 't2_select') && (
             <div className="flex gap-2 flex-wrap">
               {(step === 't1_select' ? t1Selected : t2Selected).map(p => (
                 <div key={p.id} className="flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-semibold"
-                  style={{ background: `${teamColor}20`, color: teamColor, border: `1px solid ${teamColor}40` }}>
+                  style={{ background: `${stepColor}20`, color: stepColor, border: `1px solid ${stepColor}40` }}>
                   {p.first_name} {p.last_name}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Mini récap coachs assignés */}
+          {step === 'coaches_assign' && (
+            <div className="flex gap-3">
+              {[{label:'É1', color:'#E8651A', ids: t1CoachIds}, {label:'É2', color:'#3B9EF0', ids: t2CoachIds}].map(({label, color, ids}) => (
+                <div key={label} className="flex items-center gap-1.5 flex-wrap">
+                  <span style={{fontFamily:'Bebas Neue,sans-serif', color, fontSize:11}}>{label} :</span>
+                  {ids.length === 0
+                    ? <span className="text-white/25 text-xs italic">aucun</span>
+                    : ids.map(id => {
+                        const c = allCoaches.find(x => x.id === id);
+                        return c ? (
+                          <span key={id} className="text-xs px-2 py-0.5 rounded-full font-semibold"
+                            style={{background:`${color}20`, color, border:`1px solid ${color}40`}}>
+                            {c.first_name}
+                          </span>
+                        ) : null;
+                      })
+                  }
                 </div>
               ))}
             </div>
@@ -412,10 +454,10 @@ export default function VotePage() {
         </div>
       </div>
 
-      {/* Contenu des étapes */}
+      {/* Contenu */}
       <div className="max-w-5xl mx-auto px-4 py-8">
 
-        {/* ─ E1 sélection ─ */}
+        {/* ─ Joueurs E1 ─ */}
         {step === 't1_select' && (
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 sm:gap-4">
             {t1Players.map(player => (
@@ -427,47 +469,7 @@ export default function VotePage() {
           </div>
         )}
 
-        {/* ─ E1 head coach ─ */}
-        {step === 't1_headcoach' && (
-          <>
-            <div className="mb-8 p-5 rounded-2xl border flex gap-4 items-start" style={{borderColor:'rgba(232,101,26,0.3)',background:'rgba(232,101,26,0.03)'}}>
-              <span className="text-3xl">🧑‍💼</span>
-              <div>
-                <h3 style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-xl text-[#E8651A]">Coach Principal — Équipe 1</h3>
-                <p className="text-white/60 text-sm mt-1">Choisissez le coach principal de l&apos;Équipe 1.</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-              {t1Coaches.map(coach => (
-                <CoachCard key={coach.id} coach={coach} teamColor="#E8651A"
-                  selected={t1HeadId === coach.id} role="🧑‍💼 PRINCIPAL"
-                  onClick={() => setT1HeadId(prev => prev === coach.id ? null : coach.id)} />
-              ))}
-            </div>
-          </>
-        )}
-
-        {/* ─ E1 assistant coach ─ */}
-        {step === 't1_assistantcoach' && (
-          <>
-            <div className="mb-8 p-5 rounded-2xl border flex gap-4 items-start" style={{borderColor:'rgba(232,101,26,0.3)',background:'rgba(232,101,26,0.03)'}}>
-              <span className="text-3xl">👨‍💼</span>
-              <div>
-                <h3 style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-xl text-[#E8651A]">Coach Adjoint — Équipe 1</h3>
-                <p className="text-white/60 text-sm mt-1">Choisissez le coach adjoint de l&apos;Équipe 1.</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-              {t1Coaches.filter(c => c.id !== t1HeadId).map(coach => (
-                <CoachCard key={coach.id} coach={coach} teamColor="#E8651A"
-                  selected={t1AsstId === coach.id} role="👨‍💼 ADJOINT"
-                  onClick={() => setT1AsstId(prev => prev === coach.id ? null : coach.id)} />
-              ))}
-            </div>
-          </>
-        )}
-
-        {/* ─ Transition E1→E2 ─ */}
+        {/* ─ Joueurs E2 ─ */}
         {step === 't2_select' && (
           <>
             <div className="mb-6 p-4 rounded-2xl border flex items-center gap-3" style={{borderColor:'rgba(59,158,240,0.3)',background:'rgba(59,158,240,0.05)'}}>
@@ -488,41 +490,48 @@ export default function VotePage() {
           </>
         )}
 
-        {/* ─ E2 head coach ─ */}
-        {step === 't2_headcoach' && (
+        {/* ─ Assignation coachs ─ */}
+        {step === 'coaches_assign' && (
           <>
-            <div className="mb-8 p-5 rounded-2xl border flex gap-4 items-start" style={{borderColor:'rgba(59,158,240,0.3)',background:'rgba(59,158,240,0.05)'}}>
-              <span className="text-3xl">🧑‍💼</span>
+            <div className="mb-6 p-4 rounded-2xl border flex items-start gap-3" style={{borderColor:'rgba(212,175,55,0.3)',background:'rgba(212,175,55,0.04)'}}>
+              <span className="text-2xl">🧑‍💼</span>
               <div>
-                <h3 style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-xl text-[#3B9EF0]">Coach Principal — Équipe 2</h3>
-                <p className="text-white/60 text-sm mt-1">Choisissez le coach principal de l&apos;Équipe 2.</p>
+                <h3 style={{fontFamily:'Bebas Neue,sans-serif', color:'#D4AF37'}} className="text-xl">Assignez chaque coach à une équipe</h3>
+                <p className="text-white/50 text-sm mt-1">Tous les coachs doivent être assignés. Chaque équipe doit avoir au moins un coach.</p>
               </div>
             </div>
+
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-              {t2Coaches.map(coach => (
-                <CoachCard key={coach.id} coach={coach} teamColor="#3B9EF0"
-                  selected={t2HeadId === coach.id} role="🧑‍💼 PRINCIPAL"
-                  onClick={() => setT2HeadId(prev => prev === coach.id ? null : coach.id)} />
+              {allCoaches.map(coach => (
+                <CoachAssignCard
+                  key={coach.id}
+                  coach={coach}
+                  assigned={coachAssignments[coach.id] ?? null}
+                  onAssign={(team) => assignCoach(coach.id, team)}
+                />
               ))}
             </div>
-          </>
-        )}
 
-        {/* ─ E2 assistant coach ─ */}
-        {step === 't2_assistantcoach' && (
-          <>
-            <div className="mb-8 p-5 rounded-2xl border flex gap-4 items-start" style={{borderColor:'rgba(59,158,240,0.3)',background:'rgba(59,158,240,0.05)'}}>
-              <span className="text-3xl">👨‍💼</span>
-              <div>
-                <h3 style={{fontFamily:'Bebas Neue,sans-serif'}} className="text-xl text-[#3B9EF0]">Coach Adjoint — Équipe 2</h3>
-                <p className="text-white/60 text-sm mt-1">Choisissez le coach adjoint de l&apos;Équipe 2.</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-              {t2Coaches.filter(c => c.id !== t2HeadId).map(coach => (
-                <CoachCard key={coach.id} coach={coach} teamColor="#3B9EF0"
-                  selected={t2AsstId === coach.id} role="👨‍💼 ADJOINT"
-                  onClick={() => setT2AsstId(prev => prev === coach.id ? null : coach.id)} />
+            {/* Résumé assignation */}
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              {[{label:'ÉQUIPE 1', color:'#E8651A', ids:t1CoachIds}, {label:'ÉQUIPE 2', color:'#3B9EF0', ids:t2CoachIds}].map(({label, color, ids}) => (
+                <div key={label} className="p-3 rounded-xl border" style={{borderColor:`${color}30`, background:`${color}08`}}>
+                  <p style={{fontFamily:'Bebas Neue,sans-serif', color, fontSize:12, letterSpacing:'0.1em'}} className="mb-2">{label} — {ids.length} coach{ids.length > 1 ? 's' : ''}</p>
+                  {ids.length === 0
+                    ? <p className="text-white/25 text-xs italic">Aucun coach assigné</p>
+                    : ids.map(id => {
+                        const c = allCoaches.find(x => x.id === id);
+                        return c ? (
+                          <div key={id} className="flex items-center gap-2 mb-1">
+                            <div className="w-5 h-5 rounded-full overflow-hidden bg-[#1E1E1E] flex-shrink-0">
+                              {c.photo_url ? <img src={c.photo_url} alt="" className="w-full h-full object-cover"/> : null}
+                            </div>
+                            <span className="text-white text-xs font-semibold">{c.first_name} {c.last_name}</span>
+                          </div>
+                        ) : null;
+                      })
+                  }
+                </div>
               ))}
             </div>
           </>
@@ -538,9 +547,9 @@ export default function VotePage() {
             className="btn-shimmer w-full py-4 rounded-xl transition-all duration-300 flex items-center justify-center gap-3"
             style={{
               fontFamily:'Bebas Neue,sans-serif', fontSize:'1.5rem', letterSpacing:'0.05em',
-              background: canProceed ? teamColor : '#1E1E1E',
+              background: canProceed ? stepColor : '#1E1E1E',
               color: canProceed ? 'white' : 'rgba(255,255,255,0.3)',
-              boxShadow: canProceed ? `0 0 0 2px ${teamColor}, 0 0 30px ${teamColor}80` : 'none',
+              boxShadow: canProceed ? `0 0 0 2px ${stepColor}, 0 0 30px ${stepColor}80` : 'none',
               cursor: !canProceed ? 'not-allowed' : 'pointer',
             }}>
             {nextLabel()}
@@ -552,11 +561,10 @@ export default function VotePage() {
       {showConfirm && allReady && (
         <ConfirmModal
           t1Players={t1Selected}
-          t1Head={t1Coaches.find(c => c.id === t1HeadId)!}
-          t1Asst={t1Coaches.find(c => c.id === t1AsstId)!}
           t2Players={t2Selected}
-          t2Head={t2Coaches.find(c => c.id === t2HeadId)!}
-          t2Asst={t2Coaches.find(c => c.id === t2AsstId)!}
+          t1Coaches={t1CoachIds}
+          t2Coaches={t2CoachIds}
+          allCoaches={allCoaches}
           onConfirm={submitVote}
           onCancel={() => setShowConfirm(false)}
           loading={submitting}
