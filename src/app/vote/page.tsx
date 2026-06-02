@@ -94,12 +94,16 @@ function PlayerCard({ player, selected, canSelect, teamColor, onClick }: {
 }
 
 /* ─── Carte coach avec choix équipe ─────────── */
-function CoachAssignCard({ coach, assigned, onAssign }: {
+function CoachAssignCard({ coach, assigned, onAssign, t1Count, t2Count }: {
   coach: Coach;
   assigned: 1 | 2 | null;
   onAssign: (team: 1 | 2) => void;
+  t1Count: number;
+  t2Count: number;
 }) {
   const assignedColor = assigned === 1 ? '#E8651A' : assigned === 2 ? '#3B9EF0' : null;
+  const t1Full = t1Count >= 2;
+  const t2Full = t2Count >= 2;
 
   return (
     <div className="flex flex-col rounded-2xl border overflow-hidden transition-all duration-300"
@@ -127,25 +131,28 @@ function CoachAssignCard({ coach, assigned, onAssign }: {
 
       {/* Boutons E1 / E2 */}
       <div className="flex border-t border-[#1E1E1E]">
-        <button
-          onClick={() => onAssign(1)}
-          className="flex-1 py-3 text-sm font-black tracking-wider transition-all"
-          style={{
-            background: assigned === 1 ? '#E8651A' : 'transparent',
-            color: assigned === 1 ? 'white' : 'rgba(255,255,255,0.3)',
-            borderRight: '1px solid #1E1E1E',
-          }}>
-          ÉQUIPE 1
-        </button>
-        <button
-          onClick={() => onAssign(2)}
-          className="flex-1 py-3 text-sm font-black tracking-wider transition-all"
-          style={{
-            background: assigned === 2 ? '#3B9EF0' : 'transparent',
-            color: assigned === 2 ? 'white' : 'rgba(255,255,255,0.3)',
-          }}>
-          ÉQUIPE 2
-        </button>
+        {([1, 2] as const).map((team, i) => {
+          const color    = team === 1 ? '#E8651A' : '#3B9EF0';
+          const count    = team === 1 ? t1Count : t2Count;
+          const isSel    = assigned === team;
+          const isFull   = count >= 2 && !isSel;   // équipe pleine ET ce coach n'y est pas
+          return (
+            <button
+              key={team}
+              onClick={() => { if (!isFull) onAssign(team); }}
+              className="flex-1 py-3 text-sm font-black tracking-wider transition-all select-none"
+              style={{
+                background:    isSel  ? color : 'transparent',
+                color:         isSel  ? 'white' : isFull ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.4)',
+                borderRight:   i === 0 ? '1px solid #1E1E1E' : 'none',
+                cursor:        isFull ? 'not-allowed' : 'pointer',
+                pointerEvents: isFull ? 'none' : 'auto',
+                opacity:       isFull ? 0.4 : 1,
+              }}>
+              É{team} {count}/2
+            </button>
+          );
+        })}
       </div>
     </div>
   );
@@ -267,16 +274,26 @@ export default function VotePage() {
   }
 
   function assignCoach(coachId: string, team: 1 | 2) {
-    setCoachAssignments(prev => ({
-      ...prev,
-      [coachId]: prev[coachId] === team ? null : team,
-    }));
+    // Toggle off si déjà dans cette équipe
+    if (coachAssignments[coachId] === team) {
+      setCoachAssignments(prev => ({ ...prev, [coachId]: null }));
+      return;
+    }
+    // Compter les coaches déjà assignés à cette équipe (hors ce coach)
+    let count = 0;
+    for (const [id, t] of Object.entries(coachAssignments)) {
+      if (id !== coachId && t === team) count++;
+    }
+    // Bloquer strictement à 2 par équipe
+    if (count >= 2) return;
+    setCoachAssignments(prev => ({ ...prev, [coachId]: team }));
   }
 
   const t1CoachIds = Object.entries(coachAssignments).filter(([, t]) => t === 1).map(([id]) => id);
   const t2CoachIds = Object.entries(coachAssignments).filter(([, t]) => t === 2).map(([id]) => id);
-  const allAssigned = allCoaches.length > 0 && allCoaches.every(c => coachAssignments[c.id] !== null);
-  const eachTeamHasCoach = t1CoachIds.length >= 1 && t2CoachIds.length >= 1;
+  const COACHES_PER_TEAM = 2;
+  const allAssigned = t1CoachIds.length === COACHES_PER_TEAM && t2CoachIds.length === COACHES_PER_TEAM;
+  const eachTeamHasCoach = allAssigned; // alias gardé pour compatibilité
 
   async function submitVote() {
     setSubmitting(true);
@@ -342,7 +359,7 @@ export default function VotePage() {
   const canProceed =
     (step === 't1_select'      && t1SelectedIds.length === MAX_PLAYERS) ||
     (step === 't2_select'      && t2SelectedIds.length === MAX_PLAYERS) ||
-    (step === 'coaches_assign' && allAssigned && eachTeamHasCoach);
+    (step === 'coaches_assign' && allAssigned);
 
   const nextLabel = () => {
     if (step === 't1_select') return t1SelectedIds.length === MAX_PLAYERS
@@ -352,10 +369,10 @@ export default function VotePage() {
       ? 'CHOISIR LES COACHS →'
       : `Sélectionnez encore ${MAX_PLAYERS - t2SelectedIds.length} joueur${MAX_PLAYERS - t2SelectedIds.length > 1 ? 's' : ''}`;
     if (step === 'coaches_assign') {
-      if (!allAssigned) {
-        const remaining = allCoaches.filter(c => coachAssignments[c.id] === null).length;
-        return `Assignez encore ${remaining} coach${remaining > 1 ? 's' : ''}`;
-      }
+      const missing1 = 2 - t1CoachIds.length;
+      const missing2 = 2 - t2CoachIds.length;
+      if (missing1 > 0) return `Équipe 1 : encore ${missing1} coach${missing1 > 1 ? 's' : ''} à assigner`;
+      if (missing2 > 0) return `Équipe 2 : encore ${missing2} coach${missing2 > 1 ? 's' : ''} à assigner`;
       return '✅ VALIDER MON VOTE';
     }
     return '';
@@ -508,31 +525,47 @@ export default function VotePage() {
                   coach={coach}
                   assigned={coachAssignments[coach.id] ?? null}
                   onAssign={(team) => assignCoach(coach.id, team)}
+                  t1Count={t1CoachIds.length}
+                  t2Count={t2CoachIds.length}
                 />
               ))}
             </div>
 
-            {/* Résumé assignation */}
+            {/* Résumé assignation avec slots */}
             <div className="mt-6 grid grid-cols-2 gap-3">
-              {[{label:'ÉQUIPE 1', color:'#E8651A', ids:t1CoachIds}, {label:'ÉQUIPE 2', color:'#3B9EF0', ids:t2CoachIds}].map(({label, color, ids}) => (
-                <div key={label} className="p-3 rounded-xl border" style={{borderColor:`${color}30`, background:`${color}08`}}>
-                  <p style={{fontFamily:'Bebas Neue,sans-serif', color, fontSize:12, letterSpacing:'0.1em'}} className="mb-2">{label} — {ids.length} coach{ids.length > 1 ? 's' : ''}</p>
-                  {ids.length === 0
-                    ? <p className="text-white/25 text-xs italic">Aucun coach assigné</p>
-                    : ids.map(id => {
-                        const c = allCoaches.find(x => x.id === id);
-                        return c ? (
-                          <div key={id} className="flex items-center gap-2 mb-1">
-                            <div className="w-5 h-5 rounded-full overflow-hidden bg-[#1E1E1E] flex-shrink-0">
-                              {c.photo_url ? <img src={c.photo_url} alt="" className="w-full h-full object-cover"/> : null}
-                            </div>
-                            <span className="text-white text-xs font-semibold">{c.first_name} {c.last_name}</span>
-                          </div>
-                        ) : null;
-                      })
-                  }
-                </div>
-              ))}
+              {[{label:'ÉQUIPE 1', color:'#E8651A', ids:t1CoachIds}, {label:'ÉQUIPE 2', color:'#3B9EF0', ids:t2CoachIds}].map(({label, color, ids}) => {
+                const full = ids.length === 2;
+                return (
+                  <div key={label} className="p-3 rounded-xl border transition-all" style={{borderColor: full ? color : `${color}30`, background:`${color}08`, boxShadow: full ? `0 0 12px ${color}30` : 'none'}}>
+                    <div className="flex items-center justify-between mb-2">
+                      <p style={{fontFamily:'Bebas Neue,sans-serif', color, fontSize:12, letterSpacing:'0.1em', margin:0}}>{label}</p>
+                      <span style={{fontFamily:'Bebas Neue,sans-serif', color: full ? color : 'rgba(255,255,255,0.3)', fontSize:14}}>
+                        {ids.length}/2 {full ? '✓' : ''}
+                      </span>
+                    </div>
+                    {/* 2 slots */}
+                    {[0,1].map(slot => {
+                      const id = ids[slot];
+                      const c = id ? allCoaches.find(x => x.id === id) : null;
+                      return (
+                        <div key={slot} className="flex items-center gap-2 mb-1 p-1.5 rounded-lg"
+                          style={{background: c ? `${color}15` : 'rgba(255,255,255,0.03)', border:`1px solid ${c ? color+'40' : 'rgba(255,255,255,0.08)'}`, minHeight:32}}>
+                          {c ? (
+                            <>
+                              <div className="w-6 h-6 rounded-full overflow-hidden bg-[#1E1E1E] flex-shrink-0 flex items-center justify-center" style={{border:`1px solid ${color}`}}>
+                                {c.photo_url ? <img src={c.photo_url} alt="" className="w-full h-full object-cover"/> : <span style={{fontFamily:'Bebas Neue,sans-serif',color,fontSize:9}}>{c.first_name[0]}</span>}
+                              </div>
+                              <span className="text-white text-xs font-semibold truncate">{c.first_name} {c.last_name}</span>
+                            </>
+                          ) : (
+                            <span className="text-white/20 text-xs italic pl-1">Slot {slot+1} libre</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
             </div>
           </>
         )}
