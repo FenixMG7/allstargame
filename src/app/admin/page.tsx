@@ -1303,6 +1303,17 @@ function SettingsTab() {
     alert('Votes réinitialisés.');
   }
 
+  async function resetCodes() {
+    if (!confirm('🎫 Supprimer TOUS les codes de vote ?\n\nLes votes existants ne seront PAS supprimés, mais les codes seront définitivement effacés.\n\nCette action est IRRÉVERSIBLE.')) return;
+    if (!confirm('⚠️ Êtes-vous VRAIMENT sûr de vouloir supprimer tous les codes ?')) return;
+    const { error } = await supabase.from('voting_codes').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+    if (error) {
+      alert('❌ Erreur lors de la suppression des codes : ' + error.message);
+    } else {
+      alert('✅ Tous les codes ont été supprimés. Vous pouvez en générer de nouveaux dans l\'onglet 🎫 Codes.');
+    }
+  }
+
   async function resetEverything() {
     if (!confirm('💀 RÉINITIALISATION TOTALE\n\nCeci va supprimer :\n- Tous les votes\n- Tous les codes\n- Tous les joueurs\n- Tous les coachs\n\nCette action est IRRÉVERSIBLE !')) return;
     if (!confirm('⚠️ DERNIÈRE CHANCE — Êtes-vous ABSOLUMENT sûr ?')) return;
@@ -1365,13 +1376,28 @@ function SettingsTab() {
       </div>
       <div className="rounded-xl p-5 flex flex-col gap-4" style={{background:'rgba(153,27,27,0.2)',border:'1px solid rgba(153,27,27,0.5)'}}>
         <h3 className="font-semibold text-red-400 text-sm uppercase tracking-wider">⚠️ Zone dangereuse</h3>
+
+        {/* Réinitialiser les votes */}
         <div className="flex flex-col gap-2">
           <p className="text-white/40 text-xs">Réinitialise uniquement les votes (garde joueurs et codes).</p>
           <button onClick={resetVotes} className="font-semibold py-2 rounded-lg transition-all text-sm text-white" style={{background:'#b91c1c'}}>
             🗑 Réinitialiser les votes
           </button>
         </div>
+
         <div className="h-px bg-red-900/40" />
+
+        {/* Réinitialiser les codes */}
+        <div className="flex flex-col gap-2">
+          <p className="text-white/40 text-xs">Supprime tous les codes de vote (les votes et joueurs sont conservés). Utile pour régénérer une nouvelle série de codes.</p>
+          <button onClick={resetCodes} className="font-semibold py-2 rounded-lg transition-all text-sm text-white" style={{background:'#7c2d12', border:'1px solid rgba(251,146,60,0.4)'}}>
+            🎫 Réinitialiser uniquement les codes
+          </button>
+        </div>
+
+        <div className="h-px bg-red-900/40" />
+
+        {/* Réinitialisation totale */}
         <div className="flex flex-col gap-2">
           <p className="text-white/40 text-xs">💀 Supprime absolument tout — votes, codes, joueurs et coachs.</p>
           <button onClick={resetEverything} className="font-semibold py-2 rounded-lg transition-all text-sm text-white border border-red-400/50" style={{background:'rgba(153,27,27,0.5)'}}>
