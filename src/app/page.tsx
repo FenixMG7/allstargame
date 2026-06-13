@@ -146,7 +146,7 @@ export default function HomePage() {
                 type="text"
                 value={code}
                 onChange={(e) => { setCode(e.target.value); setError(''); }}
-                placeholder="Ex : ASG-X7K2-P9QR"
+                placeholder="Ex : 1976"
                 className="w-full bg-[#141414] border border-[#1E1E1E] rounded-xl px-5 py-4 text-2xl text-center text-white placeholder:text-white/20 focus:outline-none focus:border-[#E8651A] transition-all tracking-widest uppercase"
                 style={{fontFamily:'Bebas Neue,sans-serif'}}
                 maxLength={15}
