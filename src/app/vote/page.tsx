@@ -340,10 +340,12 @@ export default function VotePage() {
     sessionStorage.removeItem('vote_code');
 
     const result = {
-      t1Players: t1Players.filter(p => t1SelectedIds.includes(p.id)),
-      t2Players: t2Players.filter(p => t2SelectedIds.includes(p.id)),
-      t1Coaches: allCoaches.filter(c => t1CoachIds.includes(c.id)),
-      t2Coaches: allCoaches.filter(c => t2CoachIds.includes(c.id)),
+      t1Players:        t1Players.filter(p => t1SelectedIds.includes(p.id)),
+      t2Players:        t2Players.filter(p => t2SelectedIds.includes(p.id)),
+      t1HeadCoach:      allCoaches.find(c => c.id === t1HeadId)      ?? null,
+      t1AssistantCoach: allCoaches.find(c => c.id === t1AssistantId) ?? null,
+      t2HeadCoach:      allCoaches.find(c => c.id === t2HeadId)      ?? null,
+      t2AssistantCoach: allCoaches.find(c => c.id === t2AssistantId) ?? null,
     };
     sessionStorage.setItem('vote_result', JSON.stringify(result));
     router.push('/merci');
