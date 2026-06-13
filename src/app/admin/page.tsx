@@ -92,7 +92,7 @@ function ResultsTab() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
     const votesRes = await fetch(
-      `${supabaseUrl}/rest/v1/votes?select=player_1_id,player_2_id,player_3_id,player_4_id,player_5_id,bonus_player_id,head_coach_id,assistant_coach_id,head_coach_2_id,assistant_coach_2_id`,
+      `${supabaseUrl}/rest/v1/votes?select=player_1_id,player_2_id,player_3_id,player_4_id,player_5_id,player_6_id,player_7_id,player_8_id,player_9_id,player_10_id,bonus_player_id,bonus_player_2_id,head_coach_id,assistant_coach_id,head_coach_2_id,assistant_coach_2_id`,
       { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
     );
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -107,10 +107,12 @@ function ResultsTab() {
     const bonusCount: Record<string, number> = {};
     players.forEach(p => { voteCount[p.id] = 0; bonusCount[p.id] = 0; });
     rawVotes.forEach(v => {
-      [v.player_1_id, v.player_2_id, v.player_3_id, v.player_4_id, v.player_5_id].forEach(id => {
+      [v.player_1_id, v.player_2_id, v.player_3_id, v.player_4_id, v.player_5_id,
+       v.player_6_id, v.player_7_id, v.player_8_id, v.player_9_id, v.player_10_id].forEach(id => {
         if (id && voteCount[id] !== undefined) voteCount[id]++;
       });
-      if (v.bonus_player_id && bonusCount[v.bonus_player_id] !== undefined) bonusCount[v.bonus_player_id]++;
+      if (v.bonus_player_id   && bonusCount[v.bonus_player_id]   !== undefined) bonusCount[v.bonus_player_id]++;
+      if (v.bonus_player_2_id && bonusCount[v.bonus_player_2_id] !== undefined) bonusCount[v.bonus_player_2_id]++;
     });
 
     const scored = players
@@ -320,7 +322,7 @@ function EquipesTab() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
     const votesRes = await fetch(
-      `${supabaseUrl}/rest/v1/votes?select=player_1_id,player_2_id,player_3_id,player_4_id,player_5_id,bonus_player_id,head_coach_id,assistant_coach_id,head_coach_2_id,assistant_coach_2_id`,
+      `${supabaseUrl}/rest/v1/votes?select=player_1_id,player_2_id,player_3_id,player_4_id,player_5_id,player_6_id,player_7_id,player_8_id,player_9_id,player_10_id,bonus_player_id,bonus_player_2_id,head_coach_id,assistant_coach_id,head_coach_2_id,assistant_coach_2_id`,
       { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
     );
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -331,10 +333,12 @@ function EquipesTab() {
     const bonusCount: Record<string, number> = {};
     pl.forEach(p => { voteCount[p.id] = 0; bonusCount[p.id] = 0; });
     rawVotes.forEach(v => {
-      [v.player_1_id, v.player_2_id, v.player_3_id, v.player_4_id, v.player_5_id].forEach((id: string) => {
+      [v.player_1_id, v.player_2_id, v.player_3_id, v.player_4_id, v.player_5_id,
+       v.player_6_id, v.player_7_id, v.player_8_id, v.player_9_id, v.player_10_id].forEach((id: string) => {
         if (id && voteCount[id] !== undefined) voteCount[id]++;
       });
-      if (v.bonus_player_id && bonusCount[v.bonus_player_id] !== undefined) bonusCount[v.bonus_player_id]++;
+      if (v.bonus_player_id   && bonusCount[v.bonus_player_id]   !== undefined) bonusCount[v.bonus_player_id]++;
+      if (v.bonus_player_2_id && bonusCount[v.bonus_player_2_id] !== undefined) bonusCount[v.bonus_player_2_id]++;
     });
     const scored = pl.map(p => ({ player: p, votes: voteCount[p.id] || 0, bonuses: bonusCount[p.id] || 0 }))
       .sort((a, b) => b.votes - a.votes);
