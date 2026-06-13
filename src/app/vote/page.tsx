@@ -93,63 +93,74 @@ function PlayerCard({ player, selected, canSelect, teamColor, onClick }: {
   );
 }
 
-/* ─── Carte coach avec choix équipe ─────────── */
-function CoachAssignCard({ coach, assigned, onAssign, t1Count, t2Count }: {
+/* ─── Carte coach avec choix équipe + rôle ──────── */
+function CoachAssignCard({ coach, assignment, onAssign, slotTaken }: {
   coach: Coach;
-  assigned: 1 | 2 | null;
-  onAssign: (team: 1 | 2) => void;
-  t1Count: number;
-  t2Count: number;
+  assignment: { team: 1 | 2; role: 'head' | 'assistant' } | null;
+  onAssign: (team: 1 | 2, role: 'head' | 'assistant') => void;
+  slotTaken: (team: 1 | 2, role: 'head' | 'assistant') => boolean;
 }) {
-  const assignedColor = assigned === 1 ? '#E8651A' : assigned === 2 ? '#3B9EF0' : null;
-  const t1Full = t1Count >= 2;
-  const t2Full = t2Count >= 2;
+  const teamColor = assignment?.team === 1 ? '#E8651A' : assignment?.team === 2 ? '#3B9EF0' : null;
+  const roleLabel = assignment?.role === 'head' ? '🧑‍💼 Principal' : assignment?.role === 'assistant' ? '👨‍💼 Adjoint' : null;
+
+  const SLOTS: { team: 1 | 2; role: 'head' | 'assistant'; label: string; color: string }[] = [
+    { team: 1, role: 'head',      label: 'É1 · Principal', color: '#E8651A' },
+    { team: 1, role: 'assistant', label: 'É1 · Adjoint',   color: '#E8651A' },
+    { team: 2, role: 'head',      label: 'É2 · Principal', color: '#3B9EF0' },
+    { team: 2, role: 'assistant', label: 'É2 · Adjoint',   color: '#3B9EF0' },
+  ];
 
   return (
     <div className="flex flex-col rounded-2xl border overflow-hidden transition-all duration-300"
       style={{
-        borderColor: assignedColor ?? '#1E1E1E',
-        background: assignedColor ? `${assignedColor}0d` : '#141414',
-        boxShadow: assignedColor ? `0 0 0 2px ${assignedColor}, 0 0 20px ${assignedColor}40` : 'none',
+        borderColor: teamColor ?? '#1E1E1E',
+        background: teamColor ? `${teamColor}0d` : '#141414',
+        boxShadow: teamColor ? `0 0 0 2px ${teamColor}, 0 0 20px ${teamColor}40` : 'none',
       }}>
       {/* Photo + nom */}
-      <div className="flex flex-col items-center gap-2 p-4 pb-3">
+      <div className="flex flex-col items-center gap-2 p-4 pb-2">
         <div className="w-20 h-20 rounded-full overflow-hidden bg-[#1E1E1E] flex items-center justify-center border-2 transition-all"
-          style={{borderColor: assignedColor ?? '#2a2a2a'}}>
+          style={{borderColor: teamColor ?? '#2a2a2a'}}>
           {coach.photo_url
             ? <img src={coach.photo_url} alt={coach.last_name} className="w-full h-full object-cover object-top" />
-            : <span style={{fontFamily:'Bebas Neue,sans-serif', color: assignedColor ?? 'rgba(255,255,255,0.3)'}} className="text-3xl">
+            : <span style={{fontFamily:'Bebas Neue,sans-serif', color: teamColor ?? 'rgba(255,255,255,0.3)'}} className="text-3xl">
                 {coach.first_name[0]}{coach.last_name[0]}
               </span>
           }
         </div>
         <div className="text-center">
-          <p style={{fontFamily:'Bebas Neue,sans-serif', color: assignedColor ?? 'white'}} className="text-lg leading-tight">{coach.first_name.toUpperCase()}</p>
-          <p style={{fontFamily:'Bebas Neue,sans-serif', color: assignedColor ?? 'white'}} className="text-lg leading-tight">{coach.last_name.toUpperCase()}</p>
+          <p style={{fontFamily:'Bebas Neue,sans-serif', color: teamColor ?? 'white'}} className="text-lg leading-tight">{coach.first_name.toUpperCase()}</p>
+          <p style={{fontFamily:'Bebas Neue,sans-serif', color: teamColor ?? 'white'}} className="text-lg leading-tight">{coach.last_name.toUpperCase()}</p>
         </div>
+        {/* Badge rôle actuel */}
+        {roleLabel && teamColor && (
+          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full" style={{background:`${teamColor}25`,color:teamColor,border:`1px solid ${teamColor}50`}}>
+            {roleLabel}
+          </span>
+        )}
       </div>
 
-      {/* Boutons E1 / E2 */}
-      <div className="flex border-t border-[#1E1E1E]">
-        {([1, 2] as const).map((team, i) => {
-          const color    = team === 1 ? '#E8651A' : '#3B9EF0';
-          const count    = team === 1 ? t1Count : t2Count;
-          const isSel    = assigned === team;
-          const isFull   = count >= 2 && !isSel;   // équipe pleine ET ce coach n'y est pas
+      {/* Grille 2×2 de slots */}
+      <div className="grid grid-cols-2 border-t border-[#1E1E1E]">
+        {SLOTS.map((slot, i) => {
+          const isSel  = assignment?.team === slot.team && assignment?.role === slot.role;
+          const isFull = !isSel && slotTaken(slot.team, slot.role);
+          const borderRight = i % 2 === 0 ? '1px solid #1E1E1E' : 'none';
+          const borderBottom = i < 2 ? '1px solid #1E1E1E' : 'none';
           return (
             <button
-              key={team}
-              onClick={() => { if (!isFull) onAssign(team); }}
-              className="flex-1 py-3 text-sm font-black tracking-wider transition-all select-none"
+              key={`${slot.team}-${slot.role}`}
+              onClick={() => { if (!isFull) onAssign(slot.team, slot.role); }}
+              className="py-2.5 px-1 text-[11px] font-black tracking-wide leading-tight transition-all select-none"
               style={{
-                background:    isSel  ? color : 'transparent',
-                color:         isSel  ? 'white' : isFull ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.4)',
-                borderRight:   i === 0 ? '1px solid #1E1E1E' : 'none',
+                background:    isSel  ? slot.color : 'transparent',
+                color:         isSel  ? 'white' : isFull ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.5)',
+                borderRight,
+                borderBottom,
                 cursor:        isFull ? 'not-allowed' : 'pointer',
-                pointerEvents: isFull ? 'none' : 'auto',
                 opacity:       isFull ? 0.4 : 1,
               }}>
-              É{team} {count}/2
+              {slot.label}
             </button>
           );
         })}
@@ -235,8 +246,8 @@ export default function VotePage() {
 
   const [t1SelectedIds, setT1SelectedIds] = useState<string[]>([]);
   const [t2SelectedIds, setT2SelectedIds] = useState<string[]>([]);
-  // coachAssignments : coachId -> 1 | 2 | null
-  const [coachAssignments, setCoachAssignments] = useState<Record<string, 1 | 2 | null>>({});
+  // coachAssignments : coachId -> { team: 1|2, role: 'head'|'assistant' } | null
+  const [coachAssignments, setCoachAssignments] = useState<Record<string, { team: 1 | 2; role: 'head' | 'assistant' } | null>>({});
 
   const [step, setStep] = useState<Step>('t1_select');
   const [showConfirm, setShowConfirm] = useState(false);
@@ -257,7 +268,7 @@ export default function VotePage() {
       if (co) {
         setAllCoaches(co);
         // Init assignments à null
-        const init: Record<string, 1 | 2 | null> = {};
+        const init: Record<string, { team: 1 | 2; role: 'head' | 'assistant' } | null> = {};
         co.forEach(c => { init[c.id] = null; });
         setCoachAssignments(init);
       }
@@ -273,27 +284,32 @@ export default function VotePage() {
     }
   }
 
-  function assignCoach(coachId: string, team: 1 | 2) {
-    // Toggle off si déjà dans cette équipe
-    if (coachAssignments[coachId] === team) {
+  function assignCoach(coachId: string, team: 1 | 2, role: 'head' | 'assistant') {
+    // Toggle off si déjà exactement ce team+rôle
+    const current = coachAssignments[coachId];
+    if (current?.team === team && current?.role === role) {
       setCoachAssignments(prev => ({ ...prev, [coachId]: null }));
       return;
     }
-    // Compter les coaches déjà assignés à cette équipe (hors ce coach)
-    let count = 0;
-    for (const [id, t] of Object.entries(coachAssignments)) {
-      if (id !== coachId && t === team) count++;
-    }
-    // Bloquer strictement à 2 par équipe
-    if (count >= 2) return;
-    setCoachAssignments(prev => ({ ...prev, [coachId]: team }));
+    // Vérifier si ce slot (team+rôle) est déjà pris par un autre coach
+    const slotTaken = Object.entries(coachAssignments).some(
+      ([id, a]) => id !== coachId && a?.team === team && a?.role === role
+    );
+    if (slotTaken) return; // slot déjà occupé
+    setCoachAssignments(prev => ({ ...prev, [coachId]: { team, role } }));
   }
 
-  const t1CoachIds = Object.entries(coachAssignments).filter(([, t]) => t === 1).map(([id]) => id);
-  const t2CoachIds = Object.entries(coachAssignments).filter(([, t]) => t === 2).map(([id]) => id);
+  const t1HeadId      = Object.entries(coachAssignments).find(([, a]) => a?.team === 1 && a?.role === 'head')?.[0]      ?? null;
+  const t1AssistantId = Object.entries(coachAssignments).find(([, a]) => a?.team === 1 && a?.role === 'assistant')?.[0] ?? null;
+  const t2HeadId      = Object.entries(coachAssignments).find(([, a]) => a?.team === 2 && a?.role === 'head')?.[0]      ?? null;
+  const t2AssistantId = Object.entries(coachAssignments).find(([, a]) => a?.team === 2 && a?.role === 'assistant')?.[0] ?? null;
+
+  // Pour compatibilité avec l'UI recap
+  const t1CoachIds = [t1HeadId, t1AssistantId].filter(Boolean) as string[];
+  const t2CoachIds = [t2HeadId, t2AssistantId].filter(Boolean) as string[];
   const COACHES_PER_TEAM = 2;
-  const allAssigned = t1CoachIds.length === COACHES_PER_TEAM && t2CoachIds.length === COACHES_PER_TEAM;
-  const eachTeamHasCoach = allAssigned; // alias gardé pour compatibilité
+  const allAssigned = !!t1HeadId && !!t1AssistantId && !!t2HeadId && !!t2AssistantId;
+  const eachTeamHasCoach = allAssigned;
 
   async function submitVote() {
     setSubmitting(true);
@@ -307,16 +323,16 @@ export default function VotePage() {
       p_player_4:          allPlayerIds[3] ?? null,
       p_player_5:          allPlayerIds[4] ?? null,
       p_bonus_player:      null,
-      p_head_coach:        t1CoachIds[0]   ?? null,
-      p_assistant_coach:   t1CoachIds[1]   ?? null,
+      p_head_coach:        t1HeadId        ?? null,
+      p_assistant_coach:   t1AssistantId   ?? null,
       p_player_6:          allPlayerIds[5] ?? null,
       p_player_7:          allPlayerIds[6] ?? null,
       p_player_8:          allPlayerIds[7] ?? null,
       p_player_9:          allPlayerIds[8] ?? null,
       p_player_10:         allPlayerIds[9] ?? null,
       p_bonus_player_2:    null,
-      p_head_coach_2:      t2CoachIds[0]   ?? null,
-      p_assistant_coach_2: t2CoachIds[1]   ?? null,
+      p_head_coach_2:      t2HeadId        ?? null,
+      p_assistant_coach_2: t2AssistantId   ?? null,
     });
     setSubmitting(false);
     if (error) { alert('Une erreur est survenue. Veuillez réessayer.'); console.error(error); return; }
@@ -449,17 +465,21 @@ export default function VotePage() {
           {/* Mini récap coachs assignés */}
           {step === 'coaches_assign' && (
             <div className="flex gap-3">
-              {[{label:'É1', color:'#E8651A', ids: t1CoachIds}, {label:'É2', color:'#3B9EF0', ids: t2CoachIds}].map(({label, color, ids}) => (
+              {[
+                {label:'É1', color:'#E8651A', slots:[{id:t1HeadId,role:'Principal'},{id:t1AssistantId,role:'Adjoint'}]},
+                {label:'É2', color:'#3B9EF0', slots:[{id:t2HeadId,role:'Principal'},{id:t2AssistantId,role:'Adjoint'}]},
+              ].map(({label, color, slots}) => (
                 <div key={label} className="flex items-center gap-1.5 flex-wrap">
                   <span style={{fontFamily:'Bebas Neue,sans-serif', color, fontSize:11}}>{label} :</span>
-                  {ids.length === 0
+                  {slots.every(s => !s.id)
                     ? <span className="text-white/25 text-xs italic">aucun</span>
-                    : ids.map(id => {
+                    : slots.map(({id, role}) => {
+                        if (!id) return null;
                         const c = allCoaches.find(x => x.id === id);
                         return c ? (
                           <span key={id} className="text-xs px-2 py-0.5 rounded-full font-semibold"
                             style={{background:`${color}20`, color, border:`1px solid ${color}40`}}>
-                            {c.first_name}
+                            {c.first_name} <span style={{opacity:0.6}}>({role})</span>
                           </span>
                         ) : null;
                       })
@@ -523,42 +543,53 @@ export default function VotePage() {
                 <CoachAssignCard
                   key={coach.id}
                   coach={coach}
-                  assigned={coachAssignments[coach.id] ?? null}
-                  onAssign={(team) => assignCoach(coach.id, team)}
-                  t1Count={t1CoachIds.length}
-                  t2Count={t2CoachIds.length}
+                  assignment={coachAssignments[coach.id] ?? null}
+                  onAssign={(team, role) => assignCoach(coach.id, team, role)}
+                  slotTaken={(team, role) =>
+                    Object.entries(coachAssignments).some(
+                      ([id, a]) => id !== coach.id && a?.team === team && a?.role === role
+                    )
+                  }
                 />
               ))}
             </div>
 
             {/* Résumé assignation avec slots */}
             <div className="mt-6 grid grid-cols-2 gap-3">
-              {[{label:'ÉQUIPE 1', color:'#E8651A', ids:t1CoachIds}, {label:'ÉQUIPE 2', color:'#3B9EF0', ids:t2CoachIds}].map(({label, color, ids}) => {
-                const full = ids.length === 2;
+              {([
+                { label:'ÉQUIPE 1', color:'#E8651A', headId: t1HeadId, assistantId: t1AssistantId },
+                { label:'ÉQUIPE 2', color:'#3B9EF0', headId: t2HeadId, assistantId: t2AssistantId },
+              ] as const).map(({label, color, headId, assistantId}) => {
+                const full = !!headId && !!assistantId;
+                const slots = [
+                  { id: headId,      roleLabel: '🧑‍💼 Principal' },
+                  { id: assistantId, roleLabel: '👨‍💼 Adjoint'   },
+                ];
                 return (
                   <div key={label} className="p-3 rounded-xl border transition-all" style={{borderColor: full ? color : `${color}30`, background:`${color}08`, boxShadow: full ? `0 0 12px ${color}30` : 'none'}}>
                     <div className="flex items-center justify-between mb-2">
                       <p style={{fontFamily:'Bebas Neue,sans-serif', color, fontSize:12, letterSpacing:'0.1em', margin:0}}>{label}</p>
                       <span style={{fontFamily:'Bebas Neue,sans-serif', color: full ? color : 'rgba(255,255,255,0.3)', fontSize:14}}>
-                        {ids.length}/2 {full ? '✓' : ''}
+                        {(headId ? 1 : 0) + (assistantId ? 1 : 0)}/2 {full ? '✓' : ''}
                       </span>
                     </div>
-                    {/* 2 slots */}
-                    {[0,1].map(slot => {
-                      const id = ids[slot];
+                    {slots.map(({ id, roleLabel }) => {
                       const c = id ? allCoaches.find(x => x.id === id) : null;
                       return (
-                        <div key={slot} className="flex items-center gap-2 mb-1 p-1.5 rounded-lg"
+                        <div key={roleLabel} className="flex items-center gap-2 mb-1 p-1.5 rounded-lg"
                           style={{background: c ? `${color}15` : 'rgba(255,255,255,0.03)', border:`1px solid ${c ? color+'40' : 'rgba(255,255,255,0.08)'}`, minHeight:32}}>
                           {c ? (
                             <>
                               <div className="w-6 h-6 rounded-full overflow-hidden bg-[#1E1E1E] flex-shrink-0 flex items-center justify-center" style={{border:`1px solid ${color}`}}>
                                 {c.photo_url ? <img src={c.photo_url} alt="" className="w-full h-full object-cover"/> : <span style={{fontFamily:'Bebas Neue,sans-serif',color,fontSize:9}}>{c.first_name[0]}</span>}
                               </div>
-                              <span className="text-white text-xs font-semibold truncate">{c.first_name} {c.last_name}</span>
+                              <div className="flex flex-col min-w-0">
+                                <span className="text-white text-xs font-semibold truncate">{c.first_name} {c.last_name}</span>
+                                <span className="text-[10px]" style={{color:`${color}90`}}>{roleLabel}</span>
+                              </div>
                             </>
                           ) : (
-                            <span className="text-white/20 text-xs italic pl-1">Slot {slot+1} libre</span>
+                            <span className="text-white/20 text-xs italic pl-1">{roleLabel} — libre</span>
                           )}
                         </div>
                       );
