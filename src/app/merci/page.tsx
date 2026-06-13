@@ -8,11 +8,11 @@ interface Coach { id: string; first_name: string; last_name: string; photo_url?:
 
 interface VoteResult {
   t1Players: Player[];
-  t1HeadCoach: Coach;
-  t1AssistantCoach: Coach;
+  t1HeadCoach: Coach | null;
+  t1AssistantCoach: Coach | null;
   t2Players: Player[];
-  t2HeadCoach: Coach;
-  t2AssistantCoach: Coach;
+  t2HeadCoach: Coach | null;
+  t2AssistantCoach: Coach | null;
 }
 
 const COURT_POSITIONS = [
@@ -121,9 +121,19 @@ function TeamCourt({ players, teamColor, teamLabel }: {
 }
 
 /* ─── Carte coach ─ */
-function CoachCard({ coach, role, delay, teamColor }: { coach: Coach; role: string; delay: number; teamColor: string }) {
+function CoachCard({ coach, role, delay, teamColor }: { coach: Coach | null; role: string; delay: number; teamColor: string }) {
   const [visible, setVisible] = useState(false);
   useEffect(()=>{const t=setTimeout(()=>setVisible(true),delay);return()=>clearTimeout(t);},[delay]);
+  if (!coach) return (
+    <div className="flex flex-col items-center gap-2 transition-all duration-500"
+      style={{opacity:visible?0.3:0,transform:visible?'translateY(0)':'translateY(16px)'}}>
+      <div className="w-14 h-14 rounded-full border-2 bg-[#1A1A1A] flex items-center justify-center"
+        style={{borderColor:`${teamColor}40`}}>
+        <span className="text-white/20 text-lg">?</span>
+      </div>
+      <p style={{fontFamily:'Bebas Neue,sans-serif',color:`${teamColor}50`,fontSize:11}} className="leading-tight text-center">{role}</p>
+    </div>
+  );
   return (
     <div className="flex flex-col items-center gap-2 transition-all duration-500"
       style={{opacity:visible?1:0,transform:visible?'translateY(0)':'translateY(16px)'}}>
@@ -255,7 +265,7 @@ export default function MerciPage() {
                 </div>
               );
             })}
-            {[{c:result.t1HeadCoach,r:'🧑‍💼 Principal'},{c:result.t1AssistantCoach,r:'👨‍💼 Adjoint'}].map(({c,r})=>(
+            {([{c:result.t1HeadCoach,r:'🧑‍💼 Principal'},{c:result.t1AssistantCoach,r:'👨‍💼 Adjoint'}] as const).map(({c,r})=> c ? (
               <div key={c.id} className="flex items-center gap-3 p-2.5 rounded-xl border border-[#1E1E1E] bg-[#0A0A0A]">
                 <span className="text-lg w-6 text-center">{r.split(' ')[0]}</span>
                 <div className="w-9 h-9 rounded-full overflow-hidden bg-[#1E1E1E] flex-shrink-0 flex items-center justify-center">
@@ -263,7 +273,7 @@ export default function MerciPage() {
                 </div>
                 <div className="flex-1"><span className="font-semibold text-sm text-white block">{c.first_name} {c.last_name}</span><span className="text-white/40 text-xs">{r.split(' ').slice(1).join(' ')}</span></div>
               </div>
-            ))}
+            ) : null)}
 
             {/* E2 */}
             <div className="flex items-center gap-2 py-1 mt-2">
@@ -290,7 +300,7 @@ export default function MerciPage() {
                 </div>
               );
             })}
-            {[{c:result.t2HeadCoach,r:'🧑‍💼 Principal'},{c:result.t2AssistantCoach,r:'👨‍💼 Adjoint'}].map(({c,r})=>(
+            {([{c:result.t2HeadCoach,r:'🧑‍💼 Principal'},{c:result.t2AssistantCoach,r:'👨‍💼 Adjoint'}] as const).map(({c,r})=> c ? (
               <div key={c.id} className="flex items-center gap-3 p-2.5 rounded-xl border border-[#1E1E1E] bg-[#0A0A0A]">
                 <span className="text-lg w-6 text-center">{r.split(' ')[0]}</span>
                 <div className="w-9 h-9 rounded-full overflow-hidden bg-[#1E1E1E] flex-shrink-0 flex items-center justify-center">
@@ -298,7 +308,7 @@ export default function MerciPage() {
                 </div>
                 <div className="flex-1"><span className="font-semibold text-sm text-white block">{c.first_name} {c.last_name}</span><span className="text-white/40 text-xs">{r.split(' ').slice(1).join(' ')}</span></div>
               </div>
-            ))}
+            ) : null)}
           </div>
         </div>
       </div>
